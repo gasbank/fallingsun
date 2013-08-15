@@ -4,10 +4,11 @@ from collections import OrderedDict
 from actor import SActor, ActorProperties
 
 class SWoodcutter(SActor):
-    def __init__(self, world, location=(0,0), angle=135, velocity=0, hitpoints=10, homeLocation=None, instanceName=""):
+    def __init__(self, world, location=(0,0), angle=135, velocity=0, hitpoints=10, homeLocation=None, instanceName="", stamina=5, maxStamina=7):
         self.instanceName = instanceName
         SActor.__init__(self)
         self.time = 0
+        self.deltaTime = 0
         self.angle = angle
         self.velocity = velocity
         self.hitpoints = hitpoints
@@ -19,6 +20,8 @@ class SWoodcutter(SActor):
         self.gatherings = OrderedDict()
         self.havestingChannel = stackless.channel()
         self.lastHavestTime = -1
+        self.stamina = stamina
+        self.maxStamina = maxStamina
         self.world.send((self.channel, "JOIN",
                          ActorProperties(self.__class__.__name__,
                                          location=location,
@@ -34,8 +37,10 @@ class SWoodcutter(SActor):
     def defaultMessageAction(self, args):
         sentFrom, msg, msgArgs = args[0], args[1], args[2:]
         if msg == "WORLD_STATE":
-        
+            self.deltaTime = msgArgs[0].time - self.time
             self.time = msgArgs[0].time
+            
+            self.stamina -= self.deltaTime
             
             for actor in msgArgs[0].actors:
                 if actor[0] is self.channel: break
@@ -49,12 +54,12 @@ class SWoodcutter(SActor):
                 if actorProp.havestable:
                     havestables.append(actor)
             
-            if havestables and self.havestTarget is None:
+            if havestables and self.havestTarget is None and self.stamina >= self.maxStamina/2:
                 havestable = random.choice(havestables)
                 self.havestTarget = havestable[0]
                 self.havestTargetProp = havestable[1]
                 
-            if self.havestTargetProp and not self.havestTargetProp.havestable:
+            if (self.havestTargetProp and not self.havestTargetProp.havestable) or self.stamina <= 0:
                 self.havestTarget = None
                 self.havestTargetProp = None
             #print self.havestTarget, self.havestTargetProp
@@ -134,3 +139,5 @@ class SWoodcutter(SActor):
             #print self.channel, self.instanceName, "HAVESTED:", self.gatherings
             msgArgs[0].append(self.gatherings)
         
+        elif msg == "ADD_STAMINA":
+            self.stamina += msgArgs[0]

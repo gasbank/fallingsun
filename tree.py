@@ -38,7 +38,9 @@ class STree(SActor):
                 #print "ACQUIRE_WOOD sent. hitpoints=", self.hitpoints
             
             #print self.channel, "--UPDATE_HAVESTABLE-->", self.world
-            self.world.send((self.channel, "UPDATE_HAVESTABLE", self.hitpoints > 0))                
+            self.world.send((self.channel, "UPDATE_HAVESTABLE", self.hitpoints > 0))
+            
+            self.world.send((self.channel, "UPDATE_MY_HP", self.hitpoints))
             
             if self.hitpoints <= 0:
                 #sentFrom.send((self.channel, "ACQUIRE_WOOD", 0))

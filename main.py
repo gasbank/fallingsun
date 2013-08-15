@@ -6,49 +6,44 @@ from home import SHome
 from tree import STree
 from woodcutter import SWoodcutter
 
-random.seed(1)
+def getRandomLoc():
+    return (random.randrange(50,450),random.randrange(50,450))
 
-totalWood = 0
+def main():
+    random.seed(1)
 
-gWorld = SWorld().channel
+    totalWood = 0
 
-SDisplayWindow(gWorld)        
+    world = SWorld().channel
 
-homeList = []
-#gatheringList = [ "WOOD", "APPLE" ]
-gatheringList = [ "WOOD" ]
+    SDisplayWindow(world)        
 
-for i in range(1):
-    loc = (random.randrange(50,450),random.randrange(50,450))
-    homeList.append(SHome(gWorld, location=loc, instanceName="Home #%d" % i))
+    homeList = []
+    gatheringList = [ "WOOD" ]
 
-for i in range(20):
-    gatheringName = random.choice(gatheringList)
-    loc = (random.randrange(50,450),random.randrange(50,450))
-    STree(gWorld, gatheringName, location=loc, instanceName="Tree #%d [%s]" % (i, gatheringName))
+    for i in range(5):
+        homeList.append(SHome(world, location=getRandomLoc(), instanceName="Home #%d" % (i+1)))
 
-for i in range(30):
-    loc = (random.randrange(50,450),random.randrange(50,450))
-    SWoodcutter(gWorld,
-                loc,
-                homeLocation=random.choice(homeList).location,
-                velocity=50+(random.random()-0.5)*3,
-                instanceName="Woodcutter #%d" % (i+1)
-                )
+    for i in range(10):
+        gatheringName = random.choice(gatheringList)
+        STree(world, gatheringName, location=getRandomLoc(), instanceName="Tree #%d [%s]" % (i+1, gatheringName), hitpoints=10)
 
-logFile = open('schedlog.log', 'w')                
-                
-def schedule_cb(prev, next):
-    #logFile.write("SCHEDULE %s --> %s\n" % (prev, next))
-    logFile.write("%s\n" % next)
+    for i in range(10):
+        SWoodcutter(world,
+                    location=getRandomLoc(),
+                    homeLocation=random.choice(homeList).location,
+                    velocity=50+(random.random()-0.5)*3,
+                    instanceName="Woodcutter #%d" % (i+1)
+                    )
 
-#stackless.set_schedule_callback(schedule_cb)
-                
-try:
-    #stackless.run(100000000, totaltimeout=True)
-    stackless.run()
+    try:
+        stackless.run()
+        
+    except KeyboardInterrupt:
+        print "Exit"
+
+    print "totalWood=", totalWood
     
-except KeyboardInterrupt:
-    print "Exit"
-
-print "totalWood=", totalWood
+if __name__ == '__main__':
+    main()
+    

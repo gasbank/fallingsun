@@ -2,6 +2,8 @@ import stackless
 from actor import SActor, NamedTasklet
 from collections import OrderedDict, Counter
 import math, sys
+from tree import STree
+import random
 
 class WorldState:
     def __init__(self, updateRate, time):
@@ -106,6 +108,10 @@ class SWorld(SActor):
         self.channel.send((self.channel, "PRINT_INFO"))
         #print "HAT!"
         
+    def spawnTree(self):
+        if random.randrange(0, 10000) < 10:
+            STree(self.channel, "WOOD", (random.randrange(50,450),random.randrange(50,450)))
+        
     def tick(self):
         startTime = 0 #time.clock()
         while 1:
@@ -119,6 +125,8 @@ class SWorld(SActor):
                 self.showHavestResult = False
             
             startTime += 1.0 / self.updateRate
+            
+            self.spawnTree()
 
             stackless.schedule()
             
@@ -138,7 +146,8 @@ class SWorld(SActor):
             pass
         elif msg == "PRINT_INFO":
             self.showHavestResult = True
-            
+        elif msg == "UPDATE_MY_HP":
+            self.registeredActors[sentFrom].hitpoints = msgArgs[0]
         else:
             print("ERROR: The world got unknown message:", msg);
             

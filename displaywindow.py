@@ -62,6 +62,8 @@ class SDisplayWindow(SActor):
             label = self.font.render(actorProp.name, 1, (255,0,0))
             screen.blit(label, actorProp.location)
             
+            pygame.draw.rect(screen, (0,255,0), pygame.Rect(actorProp.location[0], actorProp.location[1], actorProp.hitpoints, 5))
+            
         pygame.display.flip() 
         
         #print("We have",stackless.runcount,"tasklet(s).")
