@@ -1,4 +1,4 @@
-import stackless
+import stackless  # @UnresolvedImport
 from actor import SActor, NamedTasklet
 from collections import OrderedDict, Counter
 import math, sys
@@ -109,7 +109,7 @@ class SWorld(SActor):
         #print "HAT!"
         
     def spawnTree(self):
-        if random.randrange(0, 10000) < 10:
+        if random.randrange(0, 10000) < 5:
             STree(self.channel, "WOOD", (random.randrange(50,450),random.randrange(50,450)))
         
     def tick(self):

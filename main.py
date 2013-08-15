@@ -1,4 +1,4 @@
-import stackless
+import stackless  # @UnresolvedImport
 import random
 from world import SWorld
 from displaywindow import SDisplayWindow
@@ -21,14 +21,14 @@ def main():
     homeList = []
     gatheringList = [ "WOOD" ]
 
-    for i in range(5):
+    for i in range(1):
         homeList.append(SHome(world, location=getRandomLoc(), instanceName="Home #%d" % (i+1)))
 
-    for i in range(10):
+    for i in range(3):
         gatheringName = random.choice(gatheringList)
         STree(world, gatheringName, location=getRandomLoc(), instanceName="Tree #%d [%s]" % (i+1, gatheringName), hitpoints=10)
 
-    for i in range(10):
+    for i in range(1):
         SWoodcutter(world,
                     location=getRandomLoc(),
                     homeLocation=random.choice(homeList).location,
