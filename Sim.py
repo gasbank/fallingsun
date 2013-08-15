@@ -1,4 +1,5 @@
 import stackless
+import pygame
 import math, os, sys, random
 from collections import OrderedDict, Counter
 
@@ -194,16 +195,80 @@ class SWorld(SActor):
             #print self.channel, "--IDENTIFY_HAVEST_RESULT-->", actor
             actor.send((self.channel, "IDENTIFY_HAVEST_RESULT", totalGatherings))
         
+        if len(totalGatherings) == 0:
+            return
+        
         #tg = sum((Counter(dict(x)) for x in totalGatherings), Counter())
         #print tg
-        tgStr = ""
-        for w in totalGatherings:
-            tgStr += str(w['WOOD'] if w.has_key('WOOD') else 0)
+        tgStr = ",".join([str(w['WOOD'] if w.has_key('WOOD') else 0) for w in totalGatherings])
         print hex(hash(tgStr)), tgStr
         sys.exit(0)
         
 
 gWorld = SWorld().channel
+
+class SDisplayWindow(SActor):
+    def __init__(self, world=gWorld):
+        SActor.__init__(self)
+        self.world = world
+        self.icons = {}
+        pygame.init()
+        
+        self.font = pygame.font.SysFont("monospace", 15)
+        
+        pygame.display.set_mode((swidth, sheight))
+        pygame.display.set_caption("MmoActor")
+        #print self.channel, "--JOIN-->", self.world
+        self.world.send((self.channel, "JOIN",
+                         ActorProperties(self.__class__.__name__,
+                                         public=False)))
+        #print("DisplayWindow created")
+    
+    def getTaskletName(self):
+        return "DisplayWindow"
+        
+    def defaultMessageAction(self, args):
+        _, msg, msgArgs = args[0], args[1], args[2:]
+        if msg == "WORLD_STATE":
+            #print "Display updated"
+            self.updateDisplay(msgArgs)
+            pass
+            
+    def getIcon(self, iconName):
+        if self.icons.has_key(iconName):
+            return self.icons[iconName]
+        else:
+            iconFile = os.path.join("data", "%s.bmp" % iconName)
+            surface = pygame.image.load(iconFile)
+            surface.set_colorkey((0xf3, 0x0a, 0x0a))
+            self.icons[iconName] = surface
+            return surface
+        
+    def updateDisplay(self, msgArgs):
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT or event.type == pygame.KEYDOWN:
+                print self.channel, "--APP_EXIT-->", self.world
+                self.world.send((self.channel, "PRINT_INFO"))
+                
+        screen = pygame.display.get_surface()
+        background = pygame.Surface(screen.get_size())
+        background = background.convert()
+        background.fill((200,200,200))
+        screen.blit(background, (0, 0))
+        
+        ws = msgArgs[0]
+        for _, actorProp in ws.actors:
+            itemImage = self.getIcon(actorProp.name)
+            itemImage = pygame.transform.rotate(itemImage, -actorProp.angle)
+            screen.blit(itemImage, actorProp.location)
+            
+            label = self.font.render(actorProp.name, 1, (255,0,0))
+            screen.blit(label, actorProp.location)
+            
+        pygame.display.flip() 
+        
+        #print("We have",stackless.runcount,"tasklet(s).")
+
 
 class SHome(SActor):
     def __init__(self, location=(0,0), world=gWorld, instanceName=""):
@@ -413,7 +478,8 @@ class SWoodcutter(SActor):
                 totalWood += self.gatherings['WOOD']
             msgArgs[0].append(self.gatherings)
         
-        
+
+SDisplayWindow()        
 
 homeList = []
 #gatheringList = [ "WOOD", "APPLE" ]
@@ -422,11 +488,11 @@ gatheringList = [ "WOOD" ]
 for i in range(1):
     homeList.append(SHome((random.randrange(50,450),random.randrange(50,450)), instanceName="Home #%d" % i))
 
-for i in range(30):
+for i in range(1):
     gatheringName = random.choice(gatheringList)
     STree(gatheringName, (random.randrange(50,450),random.randrange(50,450)), instanceName="Tree #%d [%s]" % (i, gatheringName))
 
-for i in range(30):
+for i in range(1):
     SWoodcutter((random.randrange(50,450),random.randrange(50,450)),
                 homeLocation=random.choice(homeList).location,
                 velocity=50+(random.random()-0.5)*3,
