@@ -1,9 +1,11 @@
 # coding=utf-8
 import random, math
+from collections import OrderedDict
 from actor import SActor, ActorProperties
+from home import SHome
 
 class SArchitect(SActor):
-    def __init__(self, world, location=(0,0), angle=0, velocity=0, hitpoints=10, homeLocation=None, instanceName="", stamina=100, maxStamina=140):
+    def __init__(self, world, location=(0,0), angle=0, velocity=0, hitpoints=10, homeLocation=None, instanceName="", stamina=5, maxStamina=7):
         self.instanceName = instanceName
         SActor.__init__(self)
         self.time = 0
@@ -15,10 +17,13 @@ class SArchitect(SActor):
         self.world = world
         self.stamina = stamina
         self.maxStamina = maxStamina
-        self.intention = ''
+        self.intention = 'ROAMING'
         self.lastIntentionTime = -1
         self.roamingTarget = None
-        self.lastRoamingTargetTime = None 
+        self.lastRoamingTargetTime = None
+        self.restingHome = None
+        self.gatherings = OrderedDict()
+        self.homeNumber = 0
         self.world.send((self.channel, "JOIN",
                          ActorProperties(self.__class__.__name__,
                                          location=location,
@@ -54,8 +59,6 @@ class SArchitect(SActor):
             self.deltaTime = msgArgs[0].time - self.time
             self.time = msgArgs[0].time
             
-            self.stamina -= self.deltaTime
-            
             for actor in msgArgs[0].actors:
                 if actor[0] is self.channel: break
                     
@@ -63,23 +66,34 @@ class SArchitect(SActor):
             
             self.checkIntention()
             
+            #print self.intention
+            
             if self.intention is 'BUILDING':
                 
                 if self.isNear(self.targetBuildingLoc):
                     
-                    pass
+                    if self.gatherings.get('WOOD', 0) == 10:
+                        
+                        self.gatherings.clear()
+                    
+                        #self.world.send((self.channel, "SPAWN_HOME", self.location))
+                        
+                        self.homeNumber += 1
+                        SHome(self.world, location=self.location, instanceName=("Architect Home #%d" % self.homeNumber))
+                    
+                    self.intention = 'ROAMING'
                 
                 else:
                     
                     self.angle = self.getAngleTo(self.targetBuildingLoc)
-                    self.velocity = 5
+                    self.velocity = 15
                     
                 pass
                                 
             elif self.intention is 'ROAMING':
                 
                 if self.roamingTarget is None or self.isNear(self.roamingTarget):
-                    self.roamingTarget = self.getRandomLocationAround(100)
+                    self.roamingTarget = self.getRandomLocationAround(50)
                 
                 self.angle = math.degrees(math.atan2(-(self.location[0] - self.roamingTarget[0]),
                                                      self.location[1] - self.roamingTarget[1]))
@@ -100,14 +114,17 @@ class SArchitect(SActor):
                     
                 else:
                     self.velocity = 0
-                    
+
+                # 스태미너가 꽉 찼으면 다음 액션을 취하자!
                 if self.stamina >= self.maxStamina:
+                    self.intention = 'ROAMING'
+                    
+                    # 집에서 쉬고 있었다면 일정 확률로 나무를 요구하자
                     p = random.random()
-                    if p < 0.5:
-                        self.intention = 'WOODCUTTING'
-                    else:
-                        self.intention = 'ROAMING'
-            
+                    if p < 0.9 and self.restingHome:
+                        
+                        self.restingHome.send((self.channel, 'GIVE_ME_GATHERINGS', {'WOOD':10})) 
+                                
             
             #self.angle += 10.0 * (1.0 / msgArgs[0].updateRate)
             if self.angle >= 360:
@@ -117,21 +134,32 @@ class SArchitect(SActor):
                          self.angle, self.velocity)
             self.world.send(updateMsg)
             
+            # 마지막에 깎자
+            self.stamina -= self.deltaTime
+            
+            
         elif msg == "COLLISION":
-            pass                
+            
+            target = msgArgs[1]
+            targetProp = msgArgs[1+2]
+                
+            if targetProp.name == 'SHome' and self.intention == 'RESTING':
+                self.restingHome = target
+                #print 'Architect meets Home'
                         
         elif msg == "ADD_STAMINA":
             self.stamina += msgArgs[0]
+            if self.stamina > self.maxStamina:
+                self.stamina = self.maxStamina
             
-        elif msg == "CAN_BUILD":
-            
-            if msgArgs[0] == 'HOME' and self.intention != 'BUILDING':
-                
-                sentFrom.send((self.channel, 'GIVE_ME_GATHERINGS', {'WOOD':20}))
-        
         elif msg == "ACQUIRE":
             
-            if msgArgs[0] == 'HOME' and msgArgs[1] == 20:
+            reply = msgArgs[0]
+            
+            if reply.get('WOOD', 0) == 10:
+                
+                self.gatherings.clear()
+                self.gatherings.update(reply)
                 
                 self.intention = 'BUILDING'
                 self.targetBuilding = 'HOME'

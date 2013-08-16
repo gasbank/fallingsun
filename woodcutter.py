@@ -1,5 +1,4 @@
 # coding=utf-8
-import stackless  # @UnresolvedImport
 import random, math
 from collections import OrderedDict
 from actor import SActor, ActorProperties
@@ -19,7 +18,6 @@ class SWoodcutter(SActor):
         self.havestTarget = None
         self.havestTargetProp = None
         self.gatherings = OrderedDict()
-        self.havestingChannel = stackless.channel()
         self.lastHavestTime = -1
         self.stamina = stamina
         self.maxStamina = maxStamina
@@ -73,9 +71,7 @@ class SWoodcutter(SActor):
         if msg == "WORLD_STATE":
             self.deltaTime = msgArgs[0].time - self.time
             self.time = msgArgs[0].time
-            
-            self.stamina -= self.deltaTime
-            
+           
             for actor in msgArgs[0].actors:
                 if actor[0] is self.channel: break
                     
@@ -155,6 +151,10 @@ class SWoodcutter(SActor):
                          self.angle, self.velocity)
             self.world.send(updateMsg)
             
+            # 마지막에 깎지 
+            self.stamina -= self.deltaTime
+            
+            
         elif msg == "COLLISION":
             # Send a HAVEST message from the woodcutter to the tree. (NOT FROM THE TREE TO THE WOODCUTTER)
             if self.havestingTask is None:
@@ -204,6 +204,8 @@ class SWoodcutter(SActor):
         
         elif msg == "ADD_STAMINA":
             self.stamina += msgArgs[0]
+            if self.stamina > self.maxStamina:
+                self.stamina = self.maxStamina
             
         elif msg == "CAN_STOCK_GATHERINGS":
             while self.gatherings:

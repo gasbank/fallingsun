@@ -1,19 +1,46 @@
 import stackless  # @UnresolvedImport
 import random, math
 
+gTasklets = []
+gChannels = []
+
+def printAllActorChannelBalances():
+    for c in gChannels:
+        print c, (c, c.balance)
+        while c.balance > 0:
+            print '   ', c.receive()
+            
+    for t in gTasklets:
+        print t, t.alive, t.paused, t.blocked, t.scheduled, t.restorable
+
 class NamedTasklet(stackless.tasklet):
     name = ""
 
     def __str__(self):
         assert(len(self.name) > 0)
         return "<NamedTasklet(name='%s')>" % self.name
+
+class NamedChannel(stackless.channel):
+    name = ''
+    
+    def __str__(self):
+        assert(len(self.name) > 0)
+        return "<NamedChannel(name='%s')>" % self.name
         
 class SActor:
     def __init__(self):
-        self.channel = stackless.channel()
+        self.channel = NamedChannel()
+        self.channel.name = self.getTaskletName() + 'Channel'
+        
+        global gChannels
+        gChannels.append(self.channel)
+        
         self.processMessageMethod = self.defaultMessageAction
         t = NamedTasklet(self.processMessage)()
         t.name = self.getTaskletName()
+        
+        global gTasklets
+        gTasklets.append(t)
         #print("Actor created.")
         #print("We have",stackless.runcount,"tasklet(s) so far.")
         
@@ -29,17 +56,23 @@ class SActor:
 
     def getRandomLocationAround(self, r):
         
-        return (self.location[0] + (2*random.random() - 1) * r,
-                self.location[1] + (2*random.random() - 1) * r)
-
+        v = (self.location[0] + (2*random.random() - 1) * r,
+             self.location[1] + (2*random.random() - 1) * r)
+        
+        return (max(50, min(v[0], 450)),
+                max(50, min(v[1], 450)))
+        
     def getRandomSign(self):
         
         return 2*random.randrange(0,2)-1
         
     def getRandomLocationAround2(self, r0, r1):
         
-        return (self.location[0] + self.getRandomSign() * (r0 + random.random() * (r1-r0)),
-                self.location[1] + self.getRandomSign() * (r0 + random.random() * (r1-r0)))
+        v = (self.location[0] + self.getRandomSign() * (r0 + random.random() * (r1-r0)),
+             self.location[1] + self.getRandomSign() * (r0 + random.random() * (r1-r0)))
+        
+        return (max(50, min(v[0], 450)),
+                max(50, min(v[1], 450)))
     
     def isNear(self, loc):
         

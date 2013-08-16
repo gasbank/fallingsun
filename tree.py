@@ -1,4 +1,3 @@
-#import stackless
 from actor import SActor, ActorProperties
 
 class STree(SActor):

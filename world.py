@@ -4,6 +4,7 @@ from collections import OrderedDict, Counter
 import math, sys
 from tree import STree
 import random
+from home import SHome
 
 class WorldState:
     def __init__(self, updateRate, time):
@@ -109,8 +110,8 @@ class SWorld(SActor):
         #print "HAT!"
         
     def spawnTree(self):
-        if random.randrange(0, 10000) < 5:
-            STree(self.channel, "WOOD", (random.randrange(50,450),random.randrange(50,450)))
+        if random.randrange(0, 10000) < 1:
+            STree(self.channel, "WOOD", (random.randrange(50,450),random.randrange(50,450)), instanceName="SpawnedTree")
         
     def tick(self):
         startTime = 0 #time.clock()
@@ -148,6 +149,8 @@ class SWorld(SActor):
             self.showHavestResult = True
         elif msg == "UPDATE_MY_HP":
             self.registeredActors[sentFrom].hitpoints = msgArgs[0]
+        elif msg == 'SPAWN_HOME':
+            SHome(self.channel, location=msgArgs[0], instanceName="Architect Home")
         else:
             print("ERROR: The world got unknown message:", msg);
             

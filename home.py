@@ -27,16 +27,19 @@ class SHome(SActor):
         elif msg == "COLLISION":
             if self.channel is msgArgs[0]:
                 target = msgArgs[1]
-                #targetProp = msgArgs[1+2]
+                targetProp = msgArgs[1+2]
             elif self.channel is msgArgs[1]:
                 raise RuntimeError("What happened?")
                 target = msgArgs[0]
-                #targetProp = msgArgs[0+2]
+                targetProp = msgArgs[0+2]
             else:
                 raise RuntimeError("What happened?")
+            
+            if targetProp.name in ["SWoodcutter", "SArchitect"]:
+                target.send((self.channel, "ADD_STAMINA", 1))
                 
-            target.send((self.channel, "ADD_STAMINA", 0.1))
-            target.send((self.channel, "CAN_STOCK_GATHERINGS"))
+            if targetProp.name in ["SWoodcutter"]:
+                target.send((self.channel, "CAN_STOCK_GATHERINGS"))
             
         elif msg == 'ACQUIRE':
             gathering = msgArgs[0]
@@ -49,23 +52,18 @@ class SHome(SActor):
                 
             print "%s got %d %s. Now have %d" % (self.instanceName, gatheringCount, gathering, self.gatherings[gathering])
             
-            sentFrom.send((self.channel, 'CAN_BUILD', 'HOME'))
+            #sentFrom.send((self.channel, 'CAN_BUILD', 'HOME'))
             
         elif msg == 'GIVE_ME_GATHERINGS':
             
             requests = msgArgs[0]
             reply = {}
-            for k,v in requests:
+            for k in list(requests):
                 
-                if self.gatherings.has_key(k) and self.gatherings[k] >= v:
+                if self.gatherings.get(k, 0) >= requests[k]:
                     
-                    self.gatherings[k] -= v
-                    reply[k] = v
+                    self.gatherings[k] = self.gatherings.get(k, 0) - requests[k]
+                    reply[k] = requests[k]
                     
-                else:
-                    reply = None
-                    break
-                    
-            if reply is not None:
-                sentFrom.send((self.channel, 'ACQUIRE', reply))
+            sentFrom.send((self.channel, 'ACQUIRE', reply))
             
