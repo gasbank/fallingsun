@@ -120,7 +120,7 @@ class SWorld(SActor):
             self.killDeadActors()
             self.updateActorPosition()
             self.sendWorldStateToActors(startTime)
-            self.checkForGatherings()
+            #self.checkForGatherings()
             if self.showHavestResult:
                 self.printHavestResult()
                 self.showHavestResult = False
@@ -167,6 +167,7 @@ class SWorld(SActor):
         
         #tg = sum((Counter(dict(x)) for x in totalGatherings), Counter())
         #print tg
+        
         tgStr = ",".join([str(w['WOOD'] if w.has_key('WOOD') else 0) for w in totalGatherings])
         print hex(hash(tgStr)), tgStr
         sys.exit(0)

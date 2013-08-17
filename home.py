@@ -1,12 +1,13 @@
 from actor import SActor, ActorProperties
 
 class SHome(SActor):
-    def __init__(self, world, location=(0,0), instanceName=""):
+    def __init__(self, world, location=(0,0), instanceName="", staminaRefillSpeed=1):
         self.instanceName = instanceName
         SActor.__init__(self)
         self.world = world
         self.location = location
         self.gatherings = {}
+        self.staminaRefillSpeed = staminaRefillSpeed
         #print self.channel, "--JOIN-->", self.world
         self.world.send((self.channel, "JOIN",
                          ActorProperties(self.__class__.__name__,
@@ -36,7 +37,7 @@ class SHome(SActor):
                 raise RuntimeError("What happened?")
             
             if targetProp.name in ["SWoodcutter", "SArchitect"]:
-                target.send((self.channel, "ADD_STAMINA", 1))
+                target.send((self.channel, "ADD_STAMINA", self.staminaRefillSpeed))
                 
             if targetProp.name in ["SWoodcutter"]:
                 target.send((self.channel, "CAN_STOCK_GATHERINGS"))

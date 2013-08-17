@@ -79,7 +79,10 @@ class SArchitect(SActor):
                         #self.world.send((self.channel, "SPAWN_HOME", self.location))
                         
                         self.homeNumber += 1
-                        SHome(self.world, location=self.location, instanceName=("Architect Home #%d" % self.homeNumber))
+                        SHome(self.world,
+                              location=self.location,
+                              instanceName=("Architect Home #%d" % self.homeNumber),
+                              staminaRefillSpeed=1)
                     
                     self.intention = 'ROAMING'
                 
@@ -95,8 +98,7 @@ class SArchitect(SActor):
                 if self.roamingTarget is None or self.isNear(self.roamingTarget):
                     self.roamingTarget = self.getRandomLocationAround(50)
                 
-                self.angle = math.degrees(math.atan2(-(self.location[0] - self.roamingTarget[0]),
-                                                     self.location[1] - self.roamingTarget[1]))
+                self.angle = self.getAngleTo(self.roamingTarget)
                 
                 self.velocity = 2
                 
@@ -109,8 +111,7 @@ class SArchitect(SActor):
             elif self.intention is 'RESTING':
                 
                 if self.homeLocation:
-                    self.angle = math.degrees(math.atan2(-(self.location[0] - self.homeLocation[0]),
-                                                         self.location[1] - self.homeLocation[1]))
+                    self.angle = self.getAngleTo(self.homeLocation)
                     
                 else:
                     self.velocity = 0

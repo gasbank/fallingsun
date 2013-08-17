@@ -25,12 +25,13 @@ def main():
 
     for i in range(1):
         homeList.append(SHome(world, location=getRandomLoc(), instanceName="Home #%d" % (i + 1)))
+        #homeList.append(SHome(world, location=(250,400), instanceName="Home #%d" % (i + 1)))
 
-    for i in range(1):
+    for i in range(20):
         gatheringName = random.choice(gatheringList)
-        STree(world, gatheringName, location=getRandomLoc(), instanceName="Tree #%d [%s]" % (i + 1, gatheringName), hitpoints=100)
+        STree(world, gatheringName, location=getRandomLoc(), instanceName="Tree #%d [%s]" % (i + 1, gatheringName), hitpoints=10)
 
-    for i in range(1):
+    for i in range(20):
         SWoodcutter(world,
                     location=getRandomLoc(),
                     homeLocation=random.choice(homeList).location,
