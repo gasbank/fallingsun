@@ -36,7 +36,7 @@ class SHome(SActor):
             else:
                 raise RuntimeError("What happened?")
             
-            if targetProp.name in ["SWoodcutter", "SArchitect"]:
+            if targetProp.name in ["SWoodcutter", "SArchitect", "SBandit"]:
                 target.send((self.channel, "ADD_STAMINA", self.staminaRefillSpeed))
                 
             if targetProp.name in ["SWoodcutter"]:

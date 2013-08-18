@@ -82,10 +82,12 @@ class SWorld(SActor):
                             collision.send((self.channel, "COLLISION", collision, actor, collisionProp, actorProp))
                         pass
                     #else:
-                        #actorProp.location = (x, y)
-                        
-                actorProp.location = (x, y)
+                    #    actorProp.location = (x, y)
                 
+                #if not collisions:        
+                #    actorProp.location = (x, y)
+                
+                actorProp.location = (x, y)
                 actorPositions.append((actor, actorProp.location[0], actorProp.location[1]))
             
     def sendWorldStateToActors(self, startTime):
@@ -127,7 +129,7 @@ class SWorld(SActor):
             
             startTime += 1.0 / self.updateRate
             
-            self.spawnTree()
+            #self.spawnTree()
 
             stackless.schedule()
             
@@ -135,19 +137,19 @@ class SWorld(SActor):
             
     def defaultMessageAction(self, args):
         sentFrom, msg, msgArgs = args[0], args[1], args[2:]
-        if msg == "JOIN":
+        if msg == 'JOIN':
             self.registeredActors[sentFrom] = msgArgs[0]
-        elif msg == "UPDATE_VECTOR":
+        elif msg == 'UPDATE_VECTOR':
             self.registeredActors[sentFrom].angle = msgArgs[0]
             self.registeredActors[sentFrom].velocity = msgArgs[1]
-        elif msg == "UPDATE_HAVESTABLE":
+        elif msg == 'UPDATE_HAVESTABLE':
             self.registeredActors[sentFrom].havestable = msgArgs[0]
-        elif msg == "KILLME":
+        elif msg == 'KILLME':
             self.registeredActors[sentFrom].hitpoints = 0
             pass
-        elif msg == "PRINT_INFO":
+        elif msg == 'PRINT_INFO':
             self.showHavestResult = True
-        elif msg == "UPDATE_MY_HP":
+        elif msg == 'UPDATE_MY_HP':
             self.registeredActors[sentFrom].hitpoints = msgArgs[0]
         elif msg == 'SPAWN_HOME':
             SHome(self.channel, location=msgArgs[0], instanceName="Architect Home")
@@ -162,8 +164,8 @@ class SWorld(SActor):
             #print self.channel, "--IDENTIFY_HAVEST_RESULT-->", actor
             actor.send((self.channel, "IDENTIFY_HAVEST_RESULT", totalGatherings))
         
-        if len(totalGatherings) == 0:
-            return
+        #if len(totalGatherings) == 0:
+        #    return
         
         #tg = sum((Counter(dict(x)) for x in totalGatherings), Counter())
         #print tg

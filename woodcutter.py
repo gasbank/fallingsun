@@ -4,7 +4,7 @@ from collections import OrderedDict
 from actor import SActor, ActorProperties
 
 class SWoodcutter(SActor):
-    def __init__(self, world, location=(0,0), angle=135, velocity=0, hitpoints=10, homeLocation=None, instanceName="", stamina=5, maxStamina=7):
+    def __init__(self, world, location=(0,0), angle=135, velocity=0, hitpoints=10, homeLocation=None, instanceName="", stamina=5, maxStamina=7, roamingRadius=100):
         self.instanceName = instanceName
         SActor.__init__(self)
         self.time = 0
@@ -23,7 +23,8 @@ class SWoodcutter(SActor):
         self.intention = ''
         self.lastIntentionTime = -1
         self.roamingTarget = None
-        self.lastRoamingTargetTime = None 
+        self.lastRoamingTargetTime = None
+        self.roamingRadius = roamingRadius 
         self.world.send((self.channel, "JOIN",
                          ActorProperties(self.__class__.__name__,
                                          location=location,
@@ -51,19 +52,6 @@ class SWoodcutter(SActor):
                 return True
             
         return False
-    
-    def getRandomLocationAround(self, r):
-        
-        return (self.location[0] + (2*random.random() - 1) * r,
-                self.location[1] + (2*random.random() - 1) * r)
-    
-    def isNear(self, loc):
-        
-        return self.sqDistanceWithMe(loc) < 25
-    
-    def sqDistanceWithMe(self, loc):
-        
-        return sum(((self.location[i] - loc[i])**2 for i in [0,1]))
     
     def defaultMessageAction(self, args):
         sentFrom, msg, msgArgs = args[0], args[1], args[2:]
@@ -98,7 +86,9 @@ class SWoodcutter(SActor):
                     self.havestTargetProp = h[1]
                     
                 elif not havestables:
-                    #raise RuntimeError('No Tree?!')
+                    # 캘 것이 하나도 없는 상황
+                    self.intention = 'ROAMING'
+                    self.roamingTarget = None
                     pass
 
                 if self.stamina <= 0:
@@ -116,7 +106,7 @@ class SWoodcutter(SActor):
             elif self.intention is 'ROAMING':
                 
                 if self.roamingTarget is None or self.isNear(self.roamingTarget):
-                    self.roamingTarget = self.getRandomLocationAround(100)
+                    self.roamingTarget = self.getRandomLocationAround(self.roamingRadius)
                 
                 self.angle = self.getAngleTo(self.roamingTarget)
                 
@@ -206,4 +196,7 @@ class SWoodcutter(SActor):
             while self.gatherings:
                 k,v = self.gatherings.popitem()
                 sentFrom.send((self.channel, "ACQUIRE", k, v))
-            
+                
+        elif msg == 'ATTACK':
+            self.hitpoints -= msgArgs[0]
+            self.world.send((self.channel, "UPDATE_MY_HP", self.hitpoints))
