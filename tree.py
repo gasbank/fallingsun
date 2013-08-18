@@ -8,7 +8,6 @@ class STree(SActor):
         self.world = world
         self.hitpoints = hitpoints
         self.havestable = self.hitpoints > 0
-        self.havesters = []
         self.gatheringName = gatheringName
         #print self.channel, "--JOIN-->", self.world
         self.world.send((self.channel, "JOIN",
@@ -34,28 +33,16 @@ class STree(SActor):
         elif msg == "HAVEST":
             
             if self.hitpoints > 0:
-                #self.havesters.append(sentFrom)
-                self.hitpoints -= 1
                 #print self.channel, "--ACQUIRE-->", sentFrom
                 sentFrom.send((self.channel, "ACQUIRE", self.gatheringName, 1))
-                #print "ACQUIRE_WOOD sent. hitpoints=", self.hitpoints
-            
-                
-            #print self.channel, "--UPDATE_HAVESTABLE-->", self.world
-            self.world.send((self.channel, "UPDATE_HAVESTABLE", self.hitpoints > 0))
-            
-            self.world.send((self.channel, "UPDATE_MY_HP", self.hitpoints))
+                self.setHitpoints(self.hitpoints - 1)
             
             if self.hitpoints <= 0:
-                #sentFrom.send((self.channel, "ACQUIRE_WOOD", 0))
-                """
-                for h in self.havesters:
-                    print self.channel, "--DEPLETED-->", h
-                    h.send((self.channel, "DEPLETED"))
-                self.havesters = [] #None
-                """
                 #print self.channel, "--KILLME-->", self.world
                 self.world.send((self.channel, "KILLME"))
                 self.deathReason = 'DEPLETED'
-                #print self.channel, "STree DEPLETED and KILLME sent.", self.hitpoints
             
+    def setHitpoints(self, newValue):
+        self.hitpoints = newValue
+        self.world.send_sequence(((self.channel, "UPDATE_MY_HP", self.hitpoints),
+                                  (self.channel, "UPDATE_HAVESTABLE", self.hitpoints > 0)))

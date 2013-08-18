@@ -116,44 +116,41 @@ class SWorld(SActor):
         if random.randrange(0, 10000) < 1:
             STree(self.channel, "WOOD", (random.randrange(50,450),random.randrange(50,450)), instanceName="SpawnedTree")
         
+
+    def processOneTick(self, startTime):
+        self.killDeadActors()
+        self.updateActorPosition()
+        self.sendWorldStateToActors(startTime)
+
+        if self.spawnTreeInterval > 0 and startTime - self.lastSpawnTreeTime > self.spawnTreeInterval:
+            self.spawnTree()
+            self.lastSpawnTreeTime = startTime
+        
+        if self.showHavestResult:
+            self.printHavestResult()
+            self.showHavestResult = False
+            
+        if self.exitOnNoHavestables:
+            havestables = self.getHavestables()
+            if not havestables:
+                self.tickLoopEnable = False
+
+
+        if not self.registeredActors:
+            self.tickLoopEnable = False
+    
+    
     def tick(self):
         startTime = 0 #time.clock()
         while self.tickLoopEnable:
             
-            self.killDeadActors()
-            self.updateActorPosition()
-            self.sendWorldStateToActors(startTime)
-
-            if self.spawnTreeInterval > 0 and startTime - self.lastSpawnTreeTime > self.spawnTreeInterval:
-                self.spawnTree()
-                self.lastSpawnTreeTime = startTime
-            
-            if self.showHavestResult:
-                self.printHavestResult()
-                self.showHavestResult = False
-                
-            if self.exitOnNoHavestables:
-                havestables = self.getHavestables()
-                if not havestables:
-                    #self.flushChannel()
-                    break
-                    #self.tickLoopEnable = False
-
-                #self.checkForGatherings()
-
-            if not self.registeredActors:
-                self.tickLoopEnable = False
-            
+            self.processOneTick(startTime)
+                        
             startTime += 1.0 / self.updateRate
             
             stackless.schedule()
             
         print("The world tick loop about to exit...")
-
-    def flushChannel(self):
-        # Flush remaining messages queued in the world actor
-        while self.channel.balance > 0:
-            self.processMessageMethod(self.channel.receive())        
         
     def defaultMessageAction(self, args):
         sentFrom, msg, msgArgs = args[0], args[1], args[2:]
@@ -178,7 +175,7 @@ class SWorld(SActor):
         elif msg == 'STOP_TICK_LOOP':
             self.tickLoopEnable = False
         else:
-            print("ERROR: The world got unknown message:", msg);
+            raise RuntimeError("ERROR: The world got unknown message: %s" % msg);
             
     def printHavestResult(self):
         global totalWood
