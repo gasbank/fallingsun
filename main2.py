@@ -26,6 +26,7 @@ def main():
 
     try:
         actor.printAllActorChannelBalances()
+        world.send((None, 'START_TICK_TASKLET'))
         r = stackless.run()
         print 'stackless.run() result =', r
         

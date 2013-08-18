@@ -1,5 +1,5 @@
 # coding=utf-8
-import random, math
+import random, logging
 from collections import OrderedDict
 from actor import SActor, ActorProperties
 
@@ -24,7 +24,7 @@ class SWoodcutter(SActor):
         self.lastIntentionTime = -1
         self.roamingTarget = None
         self.lastRoamingTargetTime = None
-        self.roamingRadius = roamingRadius 
+        self.roamingRadius = roamingRadius
         self.world.send((self.channel, "JOIN",
                          ActorProperties(self.__class__.__name__,
                                          location=location,
@@ -33,6 +33,8 @@ class SWoodcutter(SActor):
                                          height=32,
                                          width=16,
                                          hitpoints=self.hitpoints)))
+        
+        logging.info('A woodcutter [%s] created.' % self.instanceName)
     
     def getTaskletName(self):
         return self.instanceName
@@ -124,7 +126,7 @@ class SWoodcutter(SActor):
                     self.angle = self.getAngleTo(self.homeLocation)
                     
                 else:
-                    raise RuntimeError("No home")
+                    #raise RuntimeError("No home")
                     self.velocity = 0
                     
                 if self.stamina >= self.maxStamina:
@@ -148,6 +150,14 @@ class SWoodcutter(SActor):
             
             # 마지막에 깎지 
             self.stamina -= self.deltaTime
+            
+            
+            # If stamina remains below the certain negative value,
+            # the hitpoints will be decreased.
+            if self.stamina < -100:
+                self.setHitpoints(self.hitpoints - 1)
+                if self.hitpoints <= 0:
+                    self.deathReason = 'STARVATION'
             
             
         elif msg == "COLLISION":
@@ -198,5 +208,12 @@ class SWoodcutter(SActor):
                 sentFrom.send((self.channel, "ACQUIRE", k, v))
                 
         elif msg == 'ATTACK':
-            self.hitpoints -= msgArgs[0]
-            self.world.send((self.channel, "UPDATE_MY_HP", self.hitpoints))
+            self.setHitpoints(self.hitpoints - msgArgs[0])
+            
+        elif msg == 'YOU_ARE_DEAD':
+            pass
+
+    def setHitpoints(self, newValue):
+        self.hitpoints = newValue
+        self.world.send((self.channel, "UPDATE_MY_HP", self.hitpoints))
+        

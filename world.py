@@ -1,7 +1,7 @@
 import stackless  # @UnresolvedImport
 from actor import SActor, NamedTasklet
-from collections import OrderedDict, Counter
-import math, sys
+from collections import OrderedDict
+import math, logging
 from tree import STree
 import random
 from home import SHome
@@ -13,37 +13,38 @@ class WorldState:
         self.actors = []
 
 class SWorld(SActor):
-    def __init__(self):
+    def __init__(self, spawnTreeInterval=0, exitOnNoHavestables=False):
         SActor.__init__(self)
         self.registeredActors = OrderedDict()
-        #self.registeredActors = {}
         self.maxUpdateRate = 30
         self.updateRate = self.maxUpdateRate
         self.showHavestResult = False
-        t = NamedTasklet(self.tick)()
-        t.name = "WorldTick"
-        #print("World created.")
+        self.spawnTreeInterval = spawnTreeInterval
+        self.exitOnNoHavestables = exitOnNoHavestables
+        self.lastSpawnTreeTime = -1
+        self.tickTasklet = None
+        self.tickLoopEnable = True
+        
+        logging.info('The World created.')
     
     def getTaskletName(self):
         return "World"
     
+    def startTickTasklet(self):
+        assert self.tickTasklet == None
+        
+        self.tickTasklet = NamedTasklet(self.tick)()
+        self.tickTasklet.name = 'WorldTick'
+        self.tickLoopEnable = True
+        
     def killDeadActors(self):
         for actor in list(self.registeredActors):
             if self.registeredActors[actor].hitpoints <= 0:
                 #print "SWorld --TaskletExit-->", actor
+                actor.send((self.channel, 'YOU_ARE_DEAD'))
                 actor.send_exception(TaskletExit)
                 del self.registeredActors[actor]
-        
-    """            
-    def testForCollisions(self, x, y, otherActors=[]):
-        collisions = []
-        for otherActor, bx, by in otherActors:
-            if (x-bx)**2 + (y-by)**2 < 16*16:
-                collisions.append(otherActor)
-        
-        return collisions
-    """
-    
+
     def testForCollisions(self, x, y, otherActors=[]):
         collisions = []
         for otherActor, bx, by in otherActors:
@@ -117,24 +118,43 @@ class SWorld(SActor):
         
     def tick(self):
         startTime = 0 #time.clock()
-        while 1:
+        while self.tickLoopEnable:
             
             self.killDeadActors()
             self.updateActorPosition()
             self.sendWorldStateToActors(startTime)
-            #self.checkForGatherings()
+
+            if self.spawnTreeInterval > 0 and startTime - self.lastSpawnTreeTime > self.spawnTreeInterval:
+                self.spawnTree()
+                self.lastSpawnTreeTime = startTime
+            
             if self.showHavestResult:
                 self.printHavestResult()
                 self.showHavestResult = False
+                
+            if self.exitOnNoHavestables:
+                havestables = self.getHavestables()
+                if not havestables:
+                    #self.flushChannel()
+                    break
+                    #self.tickLoopEnable = False
+
+                #self.checkForGatherings()
+
+            if not self.registeredActors:
+                self.tickLoopEnable = False
             
             startTime += 1.0 / self.updateRate
             
-            #self.spawnTree()
-
             stackless.schedule()
             
-        print("Should not see this")
-            
+        print("The world tick loop about to exit...")
+
+    def flushChannel(self):
+        # Flush remaining messages queued in the world actor
+        while self.channel.balance > 0:
+            self.processMessageMethod(self.channel.receive())        
+        
     def defaultMessageAction(self, args):
         sentFrom, msg, msgArgs = args[0], args[1], args[2:]
         if msg == 'JOIN':
@@ -143,7 +163,7 @@ class SWorld(SActor):
             self.registeredActors[sentFrom].angle = msgArgs[0]
             self.registeredActors[sentFrom].velocity = msgArgs[1]
         elif msg == 'UPDATE_HAVESTABLE':
-            self.registeredActors[sentFrom].havestable = msgArgs[0]
+            self.registeredActors[sentFrom].havestable = msgArgs[0]                
         elif msg == 'KILLME':
             self.registeredActors[sentFrom].hitpoints = 0
             pass
@@ -153,6 +173,10 @@ class SWorld(SActor):
             self.registeredActors[sentFrom].hitpoints = msgArgs[0]
         elif msg == 'SPAWN_HOME':
             SHome(self.channel, location=msgArgs[0], instanceName="Architect Home")
+        elif msg == 'START_TICK_TASKLET':
+            self.startTickTasklet()
+        elif msg == 'STOP_TICK_LOOP':
+            self.tickLoopEnable = False
         else:
             print("ERROR: The world got unknown message:", msg);
             
@@ -163,14 +187,14 @@ class SWorld(SActor):
         for actor in list(self.registeredActors):
             #print self.channel, "--IDENTIFY_HAVEST_RESULT-->", actor
             actor.send((self.channel, "IDENTIFY_HAVEST_RESULT", totalGatherings))
-        
-        #if len(totalGatherings) == 0:
-        #    return
-        
-        #tg = sum((Counter(dict(x)) for x in totalGatherings), Counter())
-        #print tg
-        
+
         tgStr = ",".join([str(w['WOOD'] if w.has_key('WOOD') else 0) for w in totalGatherings])
         print hex(hash(tgStr)), tgStr
-        sys.exit(0)
         
+    def killAll(self):
+        for actor in list(self.registeredActors):
+            actor.send_exception(TaskletExit)
+            
+    def getHavestables(self):
+        return [k for k,v in self.registeredActors.items() if v.havestable]
+            

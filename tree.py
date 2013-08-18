@@ -1,3 +1,4 @@
+import logging
 from actor import SActor, ActorProperties
 
 class STree(SActor):
@@ -19,6 +20,9 @@ class STree(SActor):
                                          width=32,
                                          hitpoints=self.hitpoints,
                                          havestable=self.havestable)))
+        
+        logging.info('A tree [%s] created.' % self.instanceName)
+        
     def getTaskletName(self):
         return self.instanceName
         
@@ -52,5 +56,6 @@ class STree(SActor):
                 """
                 #print self.channel, "--KILLME-->", self.world
                 self.world.send((self.channel, "KILLME"))
+                self.deathReason = 'DEPLETED'
                 #print self.channel, "STree DEPLETED and KILLME sent.", self.hitpoints
             

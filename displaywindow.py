@@ -43,9 +43,11 @@ class SDisplayWindow(SActor):
         
     def updateDisplay(self, msgArgs):
         for event in pygame.event.get():
-            if event.type == pygame.QUIT or event.type == pygame.KEYDOWN:
+            if event.type == pygame.QUIT or (event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE):
+                
                 print self.channel, "--APP_EXIT-->", self.world
-                self.world.send((self.channel, "PRINT_INFO"))
+                #self.world.send((self.channel, "PRINT_INFO"))
+                self.world.send((self.channel, "STOP_TICK_LOOP"))
                 
         screen = pygame.display.get_surface()
         background = pygame.Surface(screen.get_size())

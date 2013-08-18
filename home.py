@@ -1,3 +1,4 @@
+import logging
 from actor import SActor, ActorProperties
 
 class SHome(SActor):
@@ -17,6 +18,9 @@ class SHome(SActor):
                                          height=32,
                                          width=32,
                                          hitpoints=10)))
+        
+        logging.info('A home [%s] created.' % self.instanceName)
+        
     def getTaskletName(self):
         return self.instanceName
         

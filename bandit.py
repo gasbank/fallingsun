@@ -1,6 +1,5 @@
 # coding=utf-8
-import random, math
-from collections import OrderedDict
+import random, logging
 from actor import SActor, ActorProperties
 
 class SBandit(SActor):
@@ -33,6 +32,8 @@ class SBandit(SActor):
                                          height=32,
                                          width=16,
                                          hitpoints=self.hitpoints)))
+        
+        logging.info('A bandit [%s] created.' % self.instanceName)
     
     def getTaskletName(self):
         return self.instanceName
