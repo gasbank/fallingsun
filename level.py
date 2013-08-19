@@ -39,7 +39,7 @@ class TileLevel(object):
         self.building = [[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
                          [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
                          [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-                         [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                         [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 0, 0, 0],
                          [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
                          [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
                          [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
@@ -59,7 +59,7 @@ class TileLevel(object):
                           [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
                           [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
                           [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-                          [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                          [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0],
                           [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
                           [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
                           [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
@@ -87,6 +87,21 @@ class TileLevel(object):
     
     def findPath(self, fromI, fromJ, toI, toJ):
         
+        if not (0 <= fromI < self.width):
+            raise IndexError('Invalid fromI value')
+        
+        if not (0 <= fromJ < self.height):
+            raise IndexError('Invalid fromJ value')
+        
+        if not (0 <= toI < self.width):
+            raise IndexError('Invalid toI value')
+        
+        if not (0 <= toJ < self.height):
+            raise IndexError('Invalid toJ value')
+        
+        if fromI == toI and fromJ == toJ:
+            return [(fromI, fromJ)]        
+        
         pathCellCache = {}
         
         openCells = []
@@ -96,7 +111,8 @@ class TileLevel(object):
         while openCells:
             current = openCells.pop()
             
-            for ni, nj in TileNeighborhood4(self.width, self.height, current.i, current.j):
+            for ni, nj in TileNeighborhood4(self.width, self.height,
+                                            current.i, current.j):
                 
                 if not pathCellCache.has_key((ni, nj)):
                     cell = self.createPathCell(ni, nj)
@@ -110,10 +126,11 @@ class TileLevel(object):
                     openCells.append(cell)
                     
         path = []
-        pc = pathCellCache[(toI,toJ)]
-        while pc is not None:
-            path.insert(0, (pc.i, pc.j))
-            pc = pc.expandedFrom
+        if pathCellCache.has_key((toI,toJ)):
+            pc = pathCellCache[(toI,toJ)]
+            while pc is not None:
+                path.insert(0, (pc.i, pc.j))
+                pc = pc.expandedFrom
         
         return path
 

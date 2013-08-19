@@ -24,6 +24,7 @@ class SDisplayWindow(SActor):
         self.dustRoadTile = pygame.image.load(os.path.join('data', '004-G_Ground02.png'))
         self.waterTile = pygame.image.load(os.path.join('data', '001-G_Water01.png'))
         self.grasslandTile = pygame.image.load(os.path.join('data', '001-Grassland01.png'))
+        self.fighterTile = pygame.image.load(os.path.join('data', '001-Fighter01.png'))
         
         logging.info('The display actor created.')        
         
@@ -52,8 +53,7 @@ class SDisplayWindow(SActor):
         TS = 32  # Tile Size
         STS = 16  # Sub-Tile Size
         
-        self.frame += 1
-        animFrame = (self.frame / 150 + 1) % 4
+        animFrame = (self.frame / 80) % 4
         
         for i, r in enumerate(ws.tileData.terrain):
             for j, c in enumerate(r):
@@ -194,7 +194,9 @@ class SDisplayWindow(SActor):
             for j, c in enumerate(r):
                 
                 if c == 2:
-                    screen.blit(self.grasslandTile, (TS * j    , TS * i), (3 * TS * animFrame + TS * 0 + STS * 0, TS * 13 + STS * 0, TS * 5, TS * 5))
+                    screen.blit(self.grasslandTile, (TS * j      , TS * i), (3 * TS * animFrame + TS * 0 + STS * 0, TS * 13 + STS * 0, TS * 5, TS * 5))
+                elif c == 3:
+                    screen.blit(self.grasslandTile, (TS * j - STS, TS * i), (0 * TS * animFrame + TS * 0 + STS * 0, TS * 5 + STS * 0, TS * 4, TS * 5))
                     
     
     def drawCollisionTiles(self, screen, ws):
@@ -204,23 +206,99 @@ class SDisplayWindow(SActor):
         for i, r in enumerate(ws.tileData.collision):
             for j, c in enumerate(r):
                 if c != 0 or ws.tileData.terrain[i][j] != 0:
-                    pygame.draw.rect(screen, (255, 128, 0), pygame.Rect(TS*j, TS*i, TS, TS), 1)
+                    pygame.draw.rect(screen, (255, 128, 0),
+                                     pygame.Rect(TS*j, TS*i, TS, TS), 1)
         
     def drawPathFindTest(self, screen, ws):
         
         TS = 32  # Tile Size
-        path = ws.tileData.findPath(0,0,7,7)
+        path = ws.tileData.findPath(5,5,2,7)
         
         for i, p in enumerate(path):
             
             label = self.font.render("%d"%(i), 1, (0, 0, 255))
             screen.blit(label, (TS*p[0], TS*p[1]))
-            pygame.draw.rect(screen, (0, 0, 0), pygame.Rect(TS*p[0], TS*p[1], TS, TS), 2)
+            pygame.draw.rect(screen, (0, 0, 0),
+                             pygame.Rect(TS*p[0], TS*p[1], TS, TS), 2)
+            
+    def getDirectionFromAngle(self, angle):
         
+        SOUTH = 0
+        WEST = 1
+        EAST = 2
+        NORTH = 3
+        
+        if angle < 0:
+            angle += 360
+        
+        # South -> West -> East -> North
+        if 45*1 <= angle < 45*3:
+            return EAST
+        elif 45*3 <= angle < 45*5:
+            return SOUTH
+        elif 45*5 <= angle < 45*7:
+            return WEST
+        else:
+            return NORTH
+        
+        
+    def drawAnimatedCharacterSprite(self, screen, actorProp):
+        
+        TS = 32  # Tile Size
+        STS = 16  # Sub-Tile Size
+        
+        i = actorProp.location[0] / TS
+        j = actorProp.location[1] / TS
+        
+        animFrame = (actorProp.velocity * self.frame / 200) % 4
+        direction = self.getDirectionFromAngle(actorProp.angle)
+        
+        screen.blit(self.fighterTile,
+                    (TS * i,
+                     TS * j - STS), 
+                    (1 * TS * animFrame + TS * 0 + STS * 0,
+                     (TS * 1 + STS * 1) * direction,
+                     TS * 1,
+                     TS * 1 + STS))
+        
+    def drawActor(self, screen, actorProp):
+        
+        if actorProp.animatedSprite:
+            
+            if actorProp.name == '001-Fighter01':
+                itemImage = self.fighterTile
+            else:
+                raise RuntimeError('Not available for the moment.')
+            
+            self.drawAnimatedCharacterSprite(screen, actorProp)
+            
+        else:
+        
+            itemImage = self.getIcon(actorProp.name)
+            itemImage = pygame.transform.rotate(itemImage, -actorProp.angle)
+            screen.blit(itemImage, actorProp.location)
+            
+        # Draw the instance name of the actor
+        label = self.font.render(actorProp.name, 1, (255, 0, 0))
+        screen.blit(label, actorProp.location)
+
+            
+        # The hitpoints gauge
+        pygame.draw.rect(screen, (0, 255, 0),
+                         pygame.Rect(actorProp.location[0],
+                                     actorProp.location[1],
+                                     actorProp.hitpoints,
+                                     5))
+    
+    
+    def drawAllActors(self, screen, ws):
+        for _, actorProp in ws.actors:
+            self.drawActor(screen, actorProp)
     
     def updateDisplay(self, msgArgs):
         for event in pygame.event.get():
-            if event.type == pygame.QUIT or (event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE):
+            if event.type == pygame.QUIT or (event.type == pygame.KEYDOWN
+                                             and event.key == pygame.K_ESCAPE):
                 
                 print self.channel, "--APP_EXIT-->", self.world
                 # self.world.send((self.channel, "PRINT_INFO"))
@@ -232,23 +310,16 @@ class SDisplayWindow(SActor):
         background.fill((200, 200, 200))
         screen.blit(background, (0, 0))
         
+        self.frame += 1
+        
         ws = msgArgs[0]
         
         self.drawTerrainTiles(screen, ws)
+        self.drawPathFindTest(screen, ws)
+        self.drawAllActors(screen, ws)
         self.drawBuildingTiles(screen, ws)
         self.drawCollisionTiles(screen, ws)
-        #self.drawPathFindTest(screen, ws)
         
-        for _, actorProp in ws.actors:
-            itemImage = self.getIcon(actorProp.name)
-            itemImage = pygame.transform.rotate(itemImage, -actorProp.angle)
-            screen.blit(itemImage, actorProp.location)
-            
-            label = self.font.render(actorProp.name, 1, (255, 0, 0))
-            screen.blit(label, actorProp.location)
-            
-            pygame.draw.rect(screen, (0, 255, 0), pygame.Rect(actorProp.location[0], actorProp.location[1], actorProp.hitpoints, 5))
-            
-        pygame.display.flip() 
+        pygame.display.flip()
         
         # print("We have",stackless.runcount,"tasklet(s).")

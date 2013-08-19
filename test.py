@@ -124,6 +124,15 @@ class BasicTestCase(unittest.TestCase):
         
         tileData = level.TileLevel()
         
+        # Map: 1x1 (No obstacle)
+        tileData.terrain = [[0]]
+        tileData.building = [[0]]
+        tileData.collision = [[0]]
+        tileData.updateLevelSize()
+        
+        self.assertEqual([(0,0)], tileData.findPath(0,0,0,0))
+        self.assertRaises(IndexError, tileData.findPath, 0, 0, 1, 1)
+        
         # Map: 2x1 (No obstacle)
         tileData.terrain = [[0,0]]
         tileData.building = [[0,0]]
@@ -159,6 +168,15 @@ class BasicTestCase(unittest.TestCase):
         
         self.assertEqual([(1,0),(2,0)], tileData.findPath(1,0,2,0))
         self.assertEqual([(2,0),(1,0)], tileData.findPath(2,0,1,0))
+        
+        # Map: 3x1 (Unreachable)
+        tileData.terrain = [[0,1,0]]
+        tileData.building = [[0,1,0]]
+        tileData.collision = [[0,1,0]]
+        tileData.updateLevelSize()
+        
+        self.assertEqual([], tileData.findPath(0,0,2,0))
+        self.assertEqual([], tileData.findPath(2,0,0,0))
         
         # Map: 2x2 (No obstacle)
         tileData.terrain = [[0,0],

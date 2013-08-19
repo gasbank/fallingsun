@@ -15,15 +15,20 @@ def main():
     SDisplayWindow(world)        
 
     home = SHome(world, location=(250,400), instanceName='Home')
-    STree(world, 'WOOD', location=(150,150), instanceName='FarawayTree', hitpoints=1)
+    
+    STree(world, 
+          'WOOD', 
+          location=(150,150), 
+          instanceName='FarawayTree', 
+          hitpoints=1)
+    
     SWoodcutter(world,
                 location=(200,400),
                 homeLocation=home.location,
                 velocity=50,
                 instanceName='Woodcutter',
                 stamina=100,
-                maxStamina=100
-                )
+                maxStamina=100)
 
     try:
         #actor.printAllActorChannelBalances()

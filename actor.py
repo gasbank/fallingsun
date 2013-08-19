@@ -28,7 +28,9 @@ class NamedChannel(stackless.channel):
         return "<NamedChannel(name='%s')>" % self.name
         
 class SActor:
-    def __init__(self):
+    def __init__(self, instanceName=''):
+        self.instanceName = instanceName
+        
         self.channel = NamedChannel()
         self.channel.name = self.getTaskletName() + 'Channel'
         
@@ -41,9 +43,10 @@ class SActor:
         
         global gTasklets
         gTasklets.append(t)
-        #print("Actor created.")
-        #print("We have",stackless.runcount,"tasklet(s) so far.")
-        
+
+    def getTaskletName(self):
+        return self.instanceName
+    
     def processMessage(self):
         while 1:
             self.processMessageMethod(self.channel.receive())
@@ -51,8 +54,13 @@ class SActor:
     def defaultMessageAction(self, args):
         pass
         
-    def getTaskletName(self):
-        return ""
+    def getRandomTileAround(self, t):
+        
+        v = (self.location[0] // 32 * 32 + (2*random.random() - 1) * 32 * t,
+             self.location[1] // 32 * 32 + (2*random.random() - 1) * 32 * t)
+        
+        return (max(32*1, min(v[0], 32*10)),
+                max(32*1, min(v[1], 32*10)))
 
     def getRandomLocationAround(self, r):
         
@@ -74,9 +82,9 @@ class SActor:
         return (max(50, min(v[0], 450)),
                 max(50, min(v[1], 450)))
     
-    def isNear(self, loc):
+    def isNear(self, loc, threshold = 25):
         
-        return self.sqDistanceWithMe(loc) < 25
+        return self.sqDistanceWithMe(loc) < threshold
     
     def sqDistanceWithMe(self, loc):
         
@@ -87,7 +95,10 @@ class SActor:
                                        self.location[1] - loc[1]))
 
 class ActorProperties:
-    def __init__(self, name, location=(-1,-1), angle=0, velocity=0, height=-1, width=-1, hitpoints=1, public=True, havestable=False, physical=True):
+    def __init__(self, name, location=(-1,-1), angle=0, velocity=0, height=-1,
+                 width=-1, hitpoints=1, public=True, havestable=False,
+                 physical=True, animatedSprite=False):
+        
         self.name = name
         self.location = location
         self.angle = angle
@@ -98,4 +109,5 @@ class ActorProperties:
         self.public = public
         self.havestable = havestable
         self.physical = physical
+        self.animatedSprite = animatedSprite
         
