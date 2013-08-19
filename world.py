@@ -5,13 +5,16 @@ import math, logging
 from tree import STree
 import random
 from home import SHome
+import level
 
 class WorldState:
-    def __init__(self, updateRate, time):
+    def __init__(self, updateRate, time, tileData):
         self.updateRate = updateRate
         self.time = time
         self.actors = []
-
+        self.tileData = tileData
+        
+        
 class SWorld(SActor):
     def __init__(self, spawnTreeInterval=0, exitOnNoHavestables=False):
         SActor.__init__(self)
@@ -24,8 +27,9 @@ class SWorld(SActor):
         self.lastSpawnTreeTime = -1
         self.tickTasklet = None
         self.tickLoopEnable = True
+        self.tileData = level.TileLevel(15, 15)
         
-        logging.info('The World created.')
+        logging.info('The world created.')
     
     def getTaskletName(self):
         return "World"
@@ -92,7 +96,7 @@ class SWorld(SActor):
                 actorPositions.append((actor, actorProp.location[0], actorProp.location[1]))
             
     def sendWorldStateToActors(self, startTime):
-        ws = WorldState(self.updateRate, startTime)
+        ws = WorldState(self.updateRate, startTime, self.tileData)
         for actor in list(self.registeredActors):
             if self.registeredActors[actor].public:
                 ws.actors.append((actor, self.registeredActors[actor]))
