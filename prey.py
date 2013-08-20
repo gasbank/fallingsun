@@ -1,5 +1,7 @@
 # coding=utf-8
-import random, logging
+import stackless  # @UnresolvedImport
+import random
+import logging
 from actor import SActor, ActorProperties
 
 class SPrey(SActor):
@@ -18,10 +20,9 @@ class SPrey(SActor):
         self.world = world
         self.stamina = stamina
         self.maxStamina = maxStamina
-        self.intention = intention
-        self.lastIntentionTime = -1
         self.restingHome = None
         self.roamingPath = None
+        self.restFor = 5
         self.world.send((self.channel, "JOIN",
                          ActorProperties('001-Fighter01',
                                          location=location,
@@ -32,22 +33,25 @@ class SPrey(SActor):
                                          hitpoints=self.hitpoints,
                                          animatedSprite=True,
                                          instanceName=self.instanceName)))
+
+        self.changeIntention(intention)
         
         logging.info('A prey [%s] created.' % self.instanceName)
         
-    def checkIntention(self):
-        if not self.intention:
-            p = random.random()
-            if p < 0.5:
-                nextIntention = 'ROAMING'
-            else:
-                nextIntention = 'RESTING'
-            
-            if self.intention != nextIntention:
-                self.intention = nextIntention
-                return True
-            
-        return False
+    def changeIntention(self, intention):
+        
+        if intention == 'ROAMING':
+            self.velocity = 10
+        elif intention == 'RESTING':
+            self.velocity = 0
+            self.restFor = 6 + random.random() * 6
+        else:
+            raise RuntimeError('Unknown intention for %s' % self)
+
+        self.lastIntentionTime = self.time        
+        self.intention = intention
+        
+        self.world.send((self.channel, 'UPDATE_INTENTION', intention))
 
     def findNewRoamingPathWithin(self, t, tileData):
         
@@ -57,11 +61,12 @@ class SPrey(SActor):
             
             tryCount += 1
             
-            assert tryCount < 10
+            assert tryCount < 100
         
             goalTile = self.getRandomTileAround(t)
             
             if not tileData.isMovable(int(goalTile[0]//32), int(goalTile[1]//32)):
+                stackless.schedule()
                 continue
             
             path = tileData.findPath(int(self.location[0]//32),
@@ -76,7 +81,7 @@ class SPrey(SActor):
         
     def defaultMessageAction(self, args):
         _, msg, msgArgs = args[0], args[1], args[2:]
-
+        
         if msg == "WORLD_STATE":
             self.deltaTime = msgArgs[0].time - self.time
             self.time = msgArgs[0].time
@@ -86,9 +91,7 @@ class SPrey(SActor):
                     
             self.location = actor[1].location
             
-            self.checkIntention()
-            
-            if self.intention is 'ROAMING':
+            if self.intention == 'ROAMING':
                 
                 # If I don't have a roaming path, create a new one.
                 if not self.roamingPath:
@@ -107,28 +110,25 @@ class SPrey(SActor):
                 # Update my angle and velocity if the roaming path available.
                 if self.roamingPath:
                     
-                    self.angle = self.getAngleTo(self.getLocationFromTile(self.roamingPath[0]))
+                    angle = self.getLocationFromTile(self.roamingPath[0])
+                    self.angle = self.getAngleTo(angle)
                                     
                 # Or change to the RESTING state.
                 else:
-                    #print 'to resting state'
-                    self.intention = 'RESTING'
-                    self.restFor = 6 + random.random() * 6
-                    self.velocity = 0
-                    pass
+                    self.changeIntention('RESTING')
+                    
                     
                 
-            elif self.intention is 'RESTING':
+            elif self.intention == 'RESTING':
+                
+                #self.world.send((self.channel, 'NO_MORE_TICK_EVENT'))
                 
                 self.restFor -= self.deltaTime
+                
+                # Return to the roaming state if resting is over.
                 if self.restFor <= 0:
-                    self.intention = 'ROAMING'
-                    self.velocity = 10
-                
-                
-                if self.homeLocation:
-                    self.angle = self.getAngleTo(self.homeLocation)
-            
+                    self.changeIntention('ROAMING')
+                                
             if self.angle >= 360:
                 self.angle -= 360
                 

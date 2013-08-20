@@ -1,8 +1,9 @@
+# coding: utf-8
 from actor import SActor, ActorProperties
 import pygame
 import os
 import logging
-import copy
+import math
 
 swidth = 700
 sheight = 700
@@ -15,7 +16,8 @@ class SDisplayWindow(SActor):
         self.icons = {}
         pygame.init()
         
-        self.font = pygame.font.SysFont("Gulim", 20)
+        #self.font = pygame.font.SysFont("Gulimew", 20)
+        self.font = pygame.font.Font('C:\windows\Fonts\GULIM.TTC', 10)
         
         pygame.display.set_mode((swidth, sheight))
         pygame.display.set_caption("MmoActor")
@@ -342,7 +344,7 @@ class SDisplayWindow(SActor):
             itemImage = self.getIcon(actorProp.name)
             itemImage = pygame.transform.rotate(itemImage, -actorProp.angle)
             screen.blit(itemImage, actorProp.location)
-            
+        
         nameplateLoc = list(actorProp.location)
         
         hitpointsDrawHeight = 5
@@ -356,18 +358,28 @@ class SDisplayWindow(SActor):
         nameplateLoc[1] += hitpointsDrawHeight
                     
         # Draw the instance name of the actor
+        bgColor = (240,240,240)
         label = self.font.render(actorProp.instanceName, 1, (255, 0, 0))
+        pygame.draw.rect(screen, bgColor, (nameplateLoc[0],
+                                           nameplateLoc[1],
+                                           label.get_width(),
+                                           label.get_height()))
         screen.blit(label, nameplateLoc)
-
+        nameplateLoc[1] += label.get_height()
+        
+        label = self.font.render(actorProp.intention, 1, (0, 0, 0))
+        pygame.draw.rect(screen, bgColor, (nameplateLoc[0],
+                                           nameplateLoc[1],
+                                           label.get_width(),
+                                           label.get_height()))
+        screen.blit(label, nameplateLoc)
     
     
     def drawAllActors(self, screen, ws):
         
-        actorsYsorted = copy.copy(ws.actors)
-        actorsYsorted.sort(key=lambda x: x[1].location[1])
-        
-        for _, actorProp in actorsYsorted:
+        for _, actorProp in sorted(ws.actors, key=lambda x: x[1].location[1]):
             self.drawActor(screen, actorProp)
+    
     
     def updateDisplay(self, msgArgs):
         for event in pygame.event.get():

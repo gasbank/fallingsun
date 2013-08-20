@@ -33,9 +33,11 @@ class BasicTestCase(unittest.TestCase):
         r = stackless.run()
         print 'End of Program, stackless.run() result =', r
         
-        self.assertFalse(worldActor.registeredActors)
         self.assertEqual('STARVATION', woodcutter.deathReason)
-    
+        self.assertFalse(worldActor.registeredActors)
+        self.assertFalse(worldActor.aboutToBeKilledActors)
+        self.assertFalse(worldActor.tickDisabledActors)
+        
     def testOneWoodcutterAndOneWood(self):
         
         random.seed(1)
