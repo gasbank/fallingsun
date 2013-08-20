@@ -1,8 +1,11 @@
 from actor import SActor, ActorProperties
-import pygame, os, logging
+import pygame
+import os
+import logging
+import copy
 
-swidth = 500
-sheight = 500
+swidth = 700
+sheight = 700
 
 class SDisplayWindow(SActor):
     def __init__(self, world):
@@ -48,155 +51,214 @@ class SDisplayWindow(SActor):
             self.icons[iconName] = surface
             return surface
     
-    def drawTerrainTiles(self, screen, ws):
-        
+
+    def drawAutotiles(self, screen, ws, tile, i, j, neighbors, anim=False):
         TS = 32  # Tile Size
         STS = 16  # Sub-Tile Size
         
-        animFrame = (self.frame / 80) % 4
+        animFrame = (self.frame / 80) % 4 if anim else 0
+        
+        if neighbors == '0000':
+            area = (TS * 0, TS * 0, TS, TS)
+            screen.blit(tile, (TS * j, TS * i), area)
+            
+        # <--->
+        elif neighbors == '1000':
+            screen.blit(tile, (TS * j    , TS * i), (3 * TS * animFrame + TS * 0 + STS * 0, TS * 3 + STS * 0, STS, STS * 2))
+            screen.blit(tile, (TS * j + STS, TS * i), (3 * TS * animFrame + TS * 2 + STS * 1, TS * 3 + STS * 0, STS, STS * 2))
+        elif neighbors == '0100':
+            screen.blit(tile, (TS * j    , TS * i), (3 * TS * animFrame + TS * 0 + STS * 0, TS * 1 + STS * 0, STS, STS * 2))
+            screen.blit(tile, (TS * j + STS, TS * i), (3 * TS * animFrame + TS * 2 + STS * 1, TS * 1 + STS * 0, STS, STS * 2))
+        elif neighbors == '1100':
+            screen.blit(tile, (TS * j    , TS * i), (3 * TS * animFrame + TS * 0 + STS * 0, TS * 2 + STS * 0, STS, STS * 2))
+            screen.blit(tile, (TS * j + STS, TS * i), (3 * TS * animFrame + TS * 2 + STS * 1, TS * 2 + STS * 0, STS, STS * 2))
+            
+        # A
+        # |
+        # |
+        # |
+        # V
+        elif neighbors == '0010':
+            screen.blit(tile, (TS * j    , TS * i), (3 * TS * animFrame + TS * 2 + STS * 0, TS * 1 + STS * 0, STS * 2, STS))
+            screen.blit(tile, (TS * j    , TS * i + STS), (3 * TS * animFrame + TS * 2 + STS * 0, TS * 3 + STS * 1, STS * 2, STS))
+        elif neighbors == '0001':
+            screen.blit(tile, (TS * j    , TS * i), (3 * TS * animFrame + TS * 0 + STS * 0, TS * 1 + STS * 0, STS * 2, STS))
+            screen.blit(tile, (TS * j    , TS * i + STS), (3 * TS * animFrame + TS * 0 + STS * 0, TS * 3 + STS * 1, STS * 2, STS))
+        elif neighbors == '0011':
+            screen.blit(tile, (TS * j    , TS * i), (3 * TS * animFrame + TS * 1 + STS * 0, TS * 1 + STS * 0, STS * 2, STS))
+            screen.blit(tile, (TS * j    , TS * i + STS), (3 * TS * animFrame + TS * 1 + STS * 0, TS * 3 + STS * 1, STS * 2, STS))
+        
+        # <---+
+        #     |
+        #     V
+        elif neighbors == '0110':
+            screen.blit(tile, (TS * j    , TS * i), (3 * TS * animFrame + TS * 2 + STS * 0, TS * 1 + STS * 0, STS * 1, STS))
+            screen.blit(tile, (TS * j + STS, TS * i), (3 * TS * animFrame + TS * 2 + STS * 1, TS * 1 + STS * 0, STS * 1, STS))
+            screen.blit(tile, (TS * j    , TS * i + STS), (3 * TS * animFrame + TS * 2 + STS * 0, TS * 0 + STS * 1, STS * 1, STS))  # ##
+            screen.blit(tile, (TS * j + STS, TS * i + STS), (3 * TS * animFrame + TS * 2 + STS * 1, TS * 1 + STS * 1, STS * 1, STS))
+
+        # +--->
+        # |
+        # V
+        elif neighbors == '0101':
+            screen.blit(tile, (TS * j    , TS * i), (3 * TS * animFrame + TS * 0 + STS * 0, TS * 1 + STS * 0, STS * 1, STS))
+            screen.blit(tile, (TS * j + STS, TS * i), (3 * TS * animFrame + TS * 0 + STS * 1, TS * 1 + STS * 0, STS * 1, STS))
+            screen.blit(tile, (TS * j    , TS * i + STS), (3 * TS * animFrame + TS * 0 + STS * 0, TS * 1 + STS * 1, STS * 1, STS))
+            screen.blit(tile, (TS * j + STS, TS * i + STS), (3 * TS * animFrame + TS * 2 + STS * 1, TS * 0 + STS * 1, STS * 1, STS))  # ##
+            
+        # A
+        # |
+        # +--->
+        elif neighbors == '1001':
+            screen.blit(tile, (TS * j    , TS * i), (3 * TS * animFrame + TS * 0 + STS * 0, TS * 3 + STS * 0, STS * 1, STS))
+            screen.blit(tile, (TS * j + STS, TS * i), (3 * TS * animFrame + TS * 2 + STS * 1, TS * 0 + STS * 0, STS * 1, STS))  # ##
+            screen.blit(tile, (TS * j    , TS * i + STS), (3 * TS * animFrame + TS * 0 + STS * 0, TS * 3 + STS * 1, STS * 1, STS))
+            screen.blit(tile, (TS * j + STS, TS * i + STS), (3 * TS * animFrame + TS * 0 + STS * 1, TS * 3 + STS * 1, STS * 1, STS))
+            
+        #     A
+        #     |
+        # <---+
+        elif neighbors == '1010':
+            screen.blit(tile, (TS * j    , TS * i), (3 * TS * animFrame + TS * 2 + STS * 0, TS * 0 + STS * 0, STS * 1, STS))  # ##
+            screen.blit(tile, (TS * j + STS, TS * i), (3 * TS * animFrame + TS * 2 + STS * 1, TS * 3 + STS * 0, STS * 1, STS))
+            screen.blit(tile, (TS * j    , TS * i + STS), (3 * TS * animFrame + TS * 2 + STS * 0, TS * 3 + STS * 1, STS * 1, STS))
+            screen.blit(tile, (TS * j + STS, TS * i + STS), (3 * TS * animFrame + TS * 2 + STS * 1, TS * 3 + STS * 1, STS * 1, STS))
+            
+        
+        #     A
+        #     |
+        # <---+
+        #     |
+        #     V
+        elif neighbors == '1110':
+            screen.blit(tile, (TS * j    , TS * i), (3 * TS * animFrame + TS * 2 + STS * 0, TS * 0 + STS * 0, STS * 1, STS))  # ##
+            screen.blit(tile, (TS * j + STS, TS * i), (3 * TS * animFrame + TS * 2 + STS * 1, TS * 2 + STS * 0, STS * 1, STS))
+            screen.blit(tile, (TS * j    , TS * i + STS), (3 * TS * animFrame + TS * 2 + STS * 0, TS * 0 + STS * 1, STS * 1, STS))  # ##
+            screen.blit(tile, (TS * j + STS, TS * i + STS), (3 * TS * animFrame + TS * 2 + STS * 1, TS * 2 + STS * 1, STS * 1, STS))    
+            
+        # A
+        # |
+        # +--->
+        # |
+        # V
+        elif neighbors == '1101':
+            screen.blit(tile, (TS * j    , TS * i), (3 * TS * animFrame + TS * 0 + STS * 0, TS * 2 + STS * 0, STS * 1, STS))
+            screen.blit(tile, (TS * j + STS, TS * i), (3 * TS * animFrame + TS * 2 + STS * 1, TS * 0 + STS * 0, STS * 1, STS))  # ##
+            screen.blit(tile, (TS * j    , TS * i + STS), (3 * TS * animFrame + TS * 0 + STS * 0, TS * 2 + STS * 1, STS * 1, STS))
+            screen.blit(tile, (TS * j + STS, TS * i + STS), (3 * TS * animFrame + TS * 2 + STS * 1, TS * 0 + STS * 1, STS * 1, STS))  # ##
+        
+        #    A
+        #    |
+        # <--+-->
+        elif neighbors == '1011':
+            screen.blit(tile, (TS * j    , TS * i), (3 * TS * animFrame + TS * 2 + STS * 0, TS * 0 + STS * 0, STS * 1, STS))  # ##
+            screen.blit(tile, (TS * j + STS, TS * i), (3 * TS * animFrame + TS * 2 + STS * 1, TS * 0 + STS * 0, STS * 1, STS))  # ##
+            screen.blit(tile, (TS * j    , TS * i + STS), (3 * TS * animFrame + TS * 1 + STS * 0, TS * 3 + STS * 1, STS * 1, STS))
+            screen.blit(tile, (TS * j + STS, TS * i + STS), (3 * TS * animFrame + TS * 1 + STS * 1, TS * 3 + STS * 1, STS * 1, STS))
+            
+        # <--+-->
+        #    |
+        #    V
+        elif neighbors == '0111':
+            screen.blit(tile, (TS * j    , TS * i), (3 * TS * animFrame + TS * 1 + STS * 0, TS * 1 + STS * 0, STS * 1, STS))
+            screen.blit(tile, (TS * j + STS, TS * i), (3 * TS * animFrame + TS * 1 + STS * 1, TS * 1 + STS * 0, STS * 1, STS))
+            screen.blit(tile, (TS * j    , TS * i + STS), (3 * TS * animFrame + TS * 2 + STS * 0, TS * 0 + STS * 1, STS * 1, STS))  # ##
+            screen.blit(tile, (TS * j + STS, TS * i + STS), (3 * TS * animFrame + TS * 2 + STS * 1, TS * 0 + STS * 1, STS * 1, STS))  # ##
+            
+        #      A
+        #      |
+        #  <---+--->
+        #      |
+        #      V
+        elif neighbors == '1111':
+            area = (TS * 2, TS * 0, TS, TS)
+            screen.blit(tile, (TS * j, TS * i), area)
+        else:
+            area = (TS * 1, TS * 2, TS, TS)
+            screen.blit(tile, (TS * j, TS * i), area)
+    
+    
+    def drawTerrainTiles(self, screen, ws):
+        
+        TS = 32  # Tile Size
         
         for i, r in enumerate(ws.tileData.terrain):
             for j, c in enumerate(r):
                 
+                autoTile = None
+                autoTileAnim = False
+                
                 if c == 0:
                     area = (TS * 1, TS * 0, TS, TS)
                     screen.blit(self.waterTile, (TS * j, TS * i), area)
-                else:
-                    neighbors = '%d%d%d%d' % (ws.tileData.terrain[i - 1][j], ws.tileData.terrain[i + 1][j], r[j - 1], r[j + 1])
+                elif c == 1:
+                    autoTile = self.waterTile
+                    autoTileAnim = True
+                elif c == 2:
+                    autoTile = self.dustRoadTile
+                
+                if autoTile:
+                    neighbors = '%d%d%d%d' % (1 if ws.tileData.terrain[i - 1][j] == c else 0,
+                                              1 if ws.tileData.terrain[i + 1][j] == c else 0,
+                                              1 if r[j - 1] == c else 0,
+                                              1 if r[j + 1] == c else 0)
                     
-                    if neighbors == '0000':
-                        area = (TS * 0, TS * 0, TS, TS)
-                        screen.blit(self.waterTile, (TS * j, TS * i), area)
-                        
-                    # <--->
-                    elif neighbors == '1000':
-                        screen.blit(self.waterTile, (TS * j    , TS * i), (3 * TS * animFrame + TS * 0 + STS * 0, TS * 3 + STS * 0, STS, STS * 2))
-                        screen.blit(self.waterTile, (TS * j + STS, TS * i), (3 * TS * animFrame + TS * 2 + STS * 1, TS * 3 + STS * 0, STS, STS * 2))
-                    elif neighbors == '0100':
-                        screen.blit(self.waterTile, (TS * j    , TS * i), (3 * TS * animFrame + TS * 0 + STS * 0, TS * 1 + STS * 0, STS, STS * 2))
-                        screen.blit(self.waterTile, (TS * j + STS, TS * i), (3 * TS * animFrame + TS * 2 + STS * 1, TS * 1 + STS * 0, STS, STS * 2))
-                    elif neighbors == '1100':
-                        screen.blit(self.waterTile, (TS * j    , TS * i), (3 * TS * animFrame + TS * 0 + STS * 0, TS * 2 + STS * 0, STS, STS * 2))
-                        screen.blit(self.waterTile, (TS * j + STS, TS * i), (3 * TS * animFrame + TS * 2 + STS * 1, TS * 2 + STS * 0, STS, STS * 2))
-                        
-                    # A
-                    # |
-                    # |
-                    # |
-                    # V
-                    elif neighbors == '0010':
-                        screen.blit(self.waterTile, (TS * j    , TS * i), (3 * TS * animFrame + TS * 2 + STS * 0, TS * 1 + STS * 0, STS * 2, STS))
-                        screen.blit(self.waterTile, (TS * j    , TS * i + STS), (3 * TS * animFrame + TS * 2 + STS * 0, TS * 3 + STS * 1, STS * 2, STS))
-                    elif neighbors == '0001':
-                        screen.blit(self.waterTile, (TS * j    , TS * i), (3 * TS * animFrame + TS * 0 + STS * 0, TS * 1 + STS * 0, STS * 2, STS))
-                        screen.blit(self.waterTile, (TS * j    , TS * i + STS), (3 * TS * animFrame + TS * 0 + STS * 0, TS * 3 + STS * 1, STS * 2, STS))
-                    elif neighbors == '0011':
-                        screen.blit(self.waterTile, (TS * j    , TS * i), (3 * TS * animFrame + TS * 1 + STS * 0, TS * 1 + STS * 0, STS * 2, STS))
-                        screen.blit(self.waterTile, (TS * j    , TS * i + STS), (3 * TS * animFrame + TS * 1 + STS * 0, TS * 3 + STS * 1, STS * 2, STS))
+                    self.drawAutotiles(screen, ws, autoTile, i, j,
+                                       neighbors, autoTileAnim)
                     
-                    # <---+
-                    #     |
-                    #     V
-                    elif neighbors == '0110':
-                        screen.blit(self.waterTile, (TS * j    , TS * i), (3 * TS * animFrame + TS * 2 + STS * 0, TS * 1 + STS * 0, STS * 1, STS))
-                        screen.blit(self.waterTile, (TS * j + STS, TS * i), (3 * TS * animFrame + TS * 2 + STS * 1, TS * 1 + STS * 0, STS * 1, STS))
-                        screen.blit(self.waterTile, (TS * j    , TS * i + STS), (3 * TS * animFrame + TS * 2 + STS * 0, TS * 0 + STS * 1, STS * 1, STS))  # ##
-                        screen.blit(self.waterTile, (TS * j + STS, TS * i + STS), (3 * TS * animFrame + TS * 2 + STS * 1, TS * 1 + STS * 1, STS * 1, STS))
-
-                    # +--->
-                    # |
-                    # V
-                    elif neighbors == '0101':
-                        screen.blit(self.waterTile, (TS * j    , TS * i), (3 * TS * animFrame + TS * 0 + STS * 0, TS * 1 + STS * 0, STS * 1, STS))
-                        screen.blit(self.waterTile, (TS * j + STS, TS * i), (3 * TS * animFrame + TS * 0 + STS * 1, TS * 1 + STS * 0, STS * 1, STS))
-                        screen.blit(self.waterTile, (TS * j    , TS * i + STS), (3 * TS * animFrame + TS * 0 + STS * 0, TS * 1 + STS * 1, STS * 1, STS))
-                        screen.blit(self.waterTile, (TS * j + STS, TS * i + STS), (3 * TS * animFrame + TS * 2 + STS * 1, TS * 0 + STS * 1, STS * 1, STS))  # ##
-                        
-                    # A
-                    # |
-                    # +--->
-                    elif neighbors == '1001':
-                        screen.blit(self.waterTile, (TS * j    , TS * i), (3 * TS * animFrame + TS * 0 + STS * 0, TS * 3 + STS * 0, STS * 1, STS))
-                        screen.blit(self.waterTile, (TS * j + STS, TS * i), (3 * TS * animFrame + TS * 2 + STS * 1, TS * 0 + STS * 0, STS * 1, STS))  # ##
-                        screen.blit(self.waterTile, (TS * j    , TS * i + STS), (3 * TS * animFrame + TS * 0 + STS * 0, TS * 3 + STS * 1, STS * 1, STS))
-                        screen.blit(self.waterTile, (TS * j + STS, TS * i + STS), (3 * TS * animFrame + TS * 0 + STS * 1, TS * 3 + STS * 1, STS * 1, STS))
-                        
-                    #     A
-                    #     |
-                    # <---+
-                    elif neighbors == '1010':
-                        screen.blit(self.waterTile, (TS * j    , TS * i), (3 * TS * animFrame + TS * 2 + STS * 0, TS * 0 + STS * 0, STS * 1, STS))  # ##
-                        screen.blit(self.waterTile, (TS * j + STS, TS * i), (3 * TS * animFrame + TS * 2 + STS * 1, TS * 3 + STS * 0, STS * 1, STS))
-                        screen.blit(self.waterTile, (TS * j    , TS * i + STS), (3 * TS * animFrame + TS * 2 + STS * 0, TS * 3 + STS * 1, STS * 1, STS))
-                        screen.blit(self.waterTile, (TS * j + STS, TS * i + STS), (3 * TS * animFrame + TS * 2 + STS * 1, TS * 3 + STS * 1, STS * 1, STS))
-                        
-                    
-                    #     A
-                    #     |
-                    # <---+
-                    #     |
-                    #     V
-                    elif neighbors == '1110':
-                        screen.blit(self.waterTile, (TS * j    , TS * i), (3 * TS * animFrame + TS * 2 + STS * 0, TS * 0 + STS * 0, STS * 1, STS))  # ##
-                        screen.blit(self.waterTile, (TS * j + STS, TS * i), (3 * TS * animFrame + TS * 2 + STS * 1, TS * 2 + STS * 0, STS * 1, STS))
-                        screen.blit(self.waterTile, (TS * j    , TS * i + STS), (3 * TS * animFrame + TS * 2 + STS * 0, TS * 0 + STS * 1, STS * 1, STS))  # ##
-                        screen.blit(self.waterTile, (TS * j + STS, TS * i + STS), (3 * TS * animFrame + TS * 2 + STS * 1, TS * 2 + STS * 1, STS * 1, STS))    
-                        
-                    # A
-                    # |
-                    # +--->
-                    # |
-                    # V
-                    elif neighbors == '1101':
-                        screen.blit(self.waterTile, (TS * j    , TS * i), (3 * TS * animFrame + TS * 0 + STS * 0, TS * 2 + STS * 0, STS * 1, STS))
-                        screen.blit(self.waterTile, (TS * j + STS, TS * i), (3 * TS * animFrame + TS * 2 + STS * 1, TS * 0 + STS * 0, STS * 1, STS))  # ##
-                        screen.blit(self.waterTile, (TS * j    , TS * i + STS), (3 * TS * animFrame + TS * 0 + STS * 0, TS * 2 + STS * 1, STS * 1, STS))
-                        screen.blit(self.waterTile, (TS * j + STS, TS * i + STS), (3 * TS * animFrame + TS * 2 + STS * 1, TS * 0 + STS * 1, STS * 1, STS))  # ##
-                    
-                    #    A
-                    #    |
-                    # <--+-->
-                    elif neighbors == '1011':
-                        screen.blit(self.waterTile, (TS * j    , TS * i), (3 * TS * animFrame + TS * 2 + STS * 0, TS * 0 + STS * 0, STS * 1, STS))  # ##
-                        screen.blit(self.waterTile, (TS * j + STS, TS * i), (3 * TS * animFrame + TS * 2 + STS * 1, TS * 0 + STS * 0, STS * 1, STS))  # ##
-                        screen.blit(self.waterTile, (TS * j    , TS * i + STS), (3 * TS * animFrame + TS * 1 + STS * 0, TS * 3 + STS * 1, STS * 1, STS))
-                        screen.blit(self.waterTile, (TS * j + STS, TS * i + STS), (3 * TS * animFrame + TS * 1 + STS * 1, TS * 3 + STS * 1, STS * 1, STS))
-                        
-                    # <--+-->
-                    #    |
-                    #    V
-                    elif neighbors == '0111':
-                        screen.blit(self.waterTile, (TS * j    , TS * i), (3 * TS * animFrame + TS * 1 + STS * 0, TS * 1 + STS * 0, STS * 1, STS))
-                        screen.blit(self.waterTile, (TS * j + STS, TS * i), (3 * TS * animFrame + TS * 1 + STS * 1, TS * 1 + STS * 0, STS * 1, STS))
-                        screen.blit(self.waterTile, (TS * j    , TS * i + STS), (3 * TS * animFrame + TS * 2 + STS * 0, TS * 0 + STS * 1, STS * 1, STS))  # ##
-                        screen.blit(self.waterTile, (TS * j + STS, TS * i + STS), (3 * TS * animFrame + TS * 2 + STS * 1, TS * 0 + STS * 1, STS * 1, STS))  # ##
-                        
-                    #      A
-                    #      |
-                    #  <---+--->
-                    #      |
-                    #      V
-                    elif neighbors == '1111':
-                        area = (TS * 2, TS * 0, TS, TS)
-                        screen.blit(self.waterTile, (TS * j, TS * i), area)
-                    else:
-                        area = (TS * 1, TS * 2, TS, TS)
-                        screen.blit(self.waterTile, (TS * j, TS * i), area)
-    
-    
-    def drawBuildingTiles(self, screen, ws):
+    def drawBuildingTiles(self, screen, ws, ground):
         
         TS = 32  # Tile Size
         STS = 16  # Sub-Tile Size
-        animFrame = 0
         
         for i, r in enumerate(ws.tileData.building):
             for j, c in enumerate(r):
                 
                 if c == 2:
-                    screen.blit(self.grasslandTile, (TS * j      , TS * i), (3 * TS * animFrame + TS * 0 + STS * 0, TS * 13 + STS * 0, TS * 5, TS * 5))
+                    # Tent sprite
+                    spriteX = 0
+                    spriteY = 13
+                    spriteWidth = 5
+                    spriteHeight = 5
+                    drawOffsetX = 0
+                    drawOffsetY = 0
+                    sampleOffsetX = 0
+                    sampleOffsetY = 0
+                    
                 elif c == 3:
-                    screen.blit(self.grasslandTile, (TS * j - STS, TS * i), (0 * TS * animFrame + TS * 0 + STS * 0, TS * 5 + STS * 0, TS * 4, TS * 5))
+                    # Tree sprite
+                    spriteX = 0
+                    spriteY = 5
+                    spriteWidth = 4
+                    spriteHeight = 5
+                    drawOffsetX = 0
+                    drawOffsetY = 0
+                    sampleOffsetX = 0
+                    sampleOffsetY = 0
+                else:
+                    continue
+                    
+                for ii in range(spriteHeight):
+                    for jj in range(spriteWidth):
+                        
+                        if ws.tileData.collision[i+ii][j+jj] == ground:
+                
+                            screen.blit(self.grasslandTile,
+                                        (TS * j + drawOffsetX + TS*jj,
+                                         TS * i + drawOffsetY + TS*ii), 
+                                        (TS * spriteX + STS * 0 + TS*jj + sampleOffsetX, 
+                                         TS * spriteY + STS * 0 + TS*ii + sampleOffsetY, 
+                                         TS, 
+                                         TS))
+        
+    def drawGroundBuildingTiles(self, screen, ws):
+        
+        self.drawBuildingTiles(screen, ws, 1)
+
+    
+    def drawUpperBuildingTiles(self, screen, ws):
+        
+        self.drawBuildingTiles(screen, ws, 0)
                     
     
     def drawCollisionTiles(self, screen, ws):
@@ -205,7 +267,7 @@ class SDisplayWindow(SActor):
 
         for i, r in enumerate(ws.tileData.collision):
             for j, c in enumerate(r):
-                if c != 0 or ws.tileData.terrain[i][j] != 0:
+                if not ws.tileData.isMovable(j, i):
                     pygame.draw.rect(screen, (255, 128, 0),
                                      pygame.Rect(TS*j, TS*i, TS, TS), 1)
         
@@ -250,12 +312,15 @@ class SDisplayWindow(SActor):
         i = actorProp.location[0] / TS
         j = actorProp.location[1] / TS
         
+        drawXOffset = -STS
+        drawYOffset = -TS-STS//2
+        
         animFrame = (actorProp.velocity * self.frame / 200) % 4
         direction = self.getDirectionFromAngle(actorProp.angle)
         
         screen.blit(self.fighterTile,
-                    (TS * i,
-                     TS * j - STS), 
+                    (TS * i + drawXOffset,
+                     TS * j + drawYOffset), 
                     (1 * TS * animFrame + TS * 0 + STS * 0,
                      (TS * 1 + STS * 1) * direction,
                      TS * 1,
@@ -278,21 +343,30 @@ class SDisplayWindow(SActor):
             itemImage = pygame.transform.rotate(itemImage, -actorProp.angle)
             screen.blit(itemImage, actorProp.location)
             
-        # Draw the instance name of the actor
-        label = self.font.render(actorProp.name, 1, (255, 0, 0))
-        screen.blit(label, actorProp.location)
-
-            
+        nameplateLoc = list(actorProp.location)
+        
+        hitpointsDrawHeight = 5
+        
         # The hitpoints gauge
         pygame.draw.rect(screen, (0, 255, 0),
-                         pygame.Rect(actorProp.location[0],
-                                     actorProp.location[1],
+                         pygame.Rect(nameplateLoc[0],
+                                     nameplateLoc[1],
                                      actorProp.hitpoints,
-                                     5))
+                                     hitpointsDrawHeight))
+        nameplateLoc[1] += hitpointsDrawHeight
+                    
+        # Draw the instance name of the actor
+        label = self.font.render(actorProp.instanceName, 1, (255, 0, 0))
+        screen.blit(label, nameplateLoc)
+
     
     
     def drawAllActors(self, screen, ws):
-        for _, actorProp in ws.actors:
+        
+        actorsYsorted = copy.copy(ws.actors)
+        actorsYsorted.sort(key=lambda x: x[1].location[1])
+        
+        for _, actorProp in actorsYsorted:
             self.drawActor(screen, actorProp)
     
     def updateDisplay(self, msgArgs):
@@ -314,11 +388,14 @@ class SDisplayWindow(SActor):
         
         ws = msgArgs[0]
         
+        
         self.drawTerrainTiles(screen, ws)
-        self.drawPathFindTest(screen, ws)
-        self.drawAllActors(screen, ws)
-        self.drawBuildingTiles(screen, ws)
         self.drawCollisionTiles(screen, ws)
+        #self.drawPathFindTest(screen, ws)
+        self.drawGroundBuildingTiles(screen, ws)
+        self.drawAllActors(screen, ws)
+        self.drawUpperBuildingTiles(screen, ws)
+        
         
         pygame.display.flip()
         

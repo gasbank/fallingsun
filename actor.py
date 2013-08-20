@@ -97,7 +97,7 @@ class SActor:
 class ActorProperties:
     def __init__(self, name, location=(-1,-1), angle=0, velocity=0, height=-1,
                  width=-1, hitpoints=1, public=True, havestable=False,
-                 physical=True, animatedSprite=False):
+                 physical=True, animatedSprite=False, instanceName=''):
         
         self.name = name
         self.location = location
@@ -110,4 +110,5 @@ class ActorProperties:
         self.havestable = havestable
         self.physical = physical
         self.animatedSprite = animatedSprite
+        self.instanceName = instanceName
         

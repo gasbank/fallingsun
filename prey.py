@@ -30,7 +30,8 @@ class SPrey(SActor):
                                          height=32,
                                          width=16,
                                          hitpoints=self.hitpoints,
-                                         animatedSprite=True)))
+                                         animatedSprite=True,
+                                         instanceName=self.instanceName)))
         
         logging.info('A prey [%s] created.' % self.instanceName)
         
@@ -69,6 +70,9 @@ class SPrey(SActor):
                                      int(goalTile[1]//32))
 
         return path
+    
+    def getLocationFromTile(self, tileIndex):
+        return (tileIndex[0]*32+16, tileIndex[1]*32+16)
         
     def defaultMessageAction(self, args):
         _, msg, msgArgs = args[0], args[1], args[2:]
@@ -94,28 +98,33 @@ class SPrey(SActor):
                     
                 # Or check if I am near the current roaming target
                 # location.
-                elif self.isNear((self.roamingPath[0][0] * 32,
-                                  self.roamingPath[0][1] * 32),
+                elif self.isNear(self.getLocationFromTile(self.roamingPath[0]),
                                  9):
+                     
                     # If near, remove the current target location
                     self.roamingPath.pop(0)
                     
-
                 # Update my angle and velocity if the roaming path available.
                 if self.roamingPath:
                     
-                    self.angle = self.getAngleTo((self.roamingPath[0][0]*32, 
-                                                  self.roamingPath[0][1]*32))
-                    self.velocity = 10
+                    self.angle = self.getAngleTo(self.getLocationFromTile(self.roamingPath[0]))
                                     
                 # Or change to the RESTING state.
                 else:
                     #print 'to resting state'
-                    #self.intention = 'RESTING'
+                    self.intention = 'RESTING'
+                    self.restFor = 6 + random.random() * 6
+                    self.velocity = 0
                     pass
                     
                 
             elif self.intention is 'RESTING':
+                
+                self.restFor -= self.deltaTime
+                if self.restFor <= 0:
+                    self.intention = 'ROAMING'
+                    self.velocity = 10
+                
                 
                 if self.homeLocation:
                     self.angle = self.getAngleTo(self.homeLocation)
