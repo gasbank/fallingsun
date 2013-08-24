@@ -94,11 +94,40 @@ class SActor:
         return math.degrees(math.atan2(-(self.location[0] - loc[0]),
                                        self.location[1] - loc[1]))
 
+    def findNewRoamingPathWithin(self, t, tileData):
+        
+        path = None
+        tryCount = 0
+        while not path:
+            
+            tryCount += 1
+            
+            assert tryCount < 100
+        
+            goalTile = self.getRandomTileAround(t)
+            
+            if not tileData.isMovable(int(goalTile[0]//32), int(goalTile[1]//32)):
+                stackless.schedule()
+                continue
+            
+            path = tileData.findPath(self.getTileLocation()[0],
+                                     self.getTileLocation()[1],
+                                     int(goalTile[0]//32),
+                                     int(goalTile[1]//32))
+
+        return path
+    
+    def getLocationFromTile(self, tileIndex):
+        return (tileIndex[0]*32+16, tileIndex[1]*32+16)
+    
+    def getTileLocation(self):
+        return (int(self.location[0]//32), int(self.location[1]//32))
+    
 class ActorProperties:
     def __init__(self, name, location=(-1,-1), angle=0, velocity=0, height=-1,
                  width=-1, hitpoints=1, public=True, havestable=False,
                  physical=True, animatedSprite=False, instanceName='',
-                 tickEvent=True):
+                 tickEvent=True, staticSprite=False):
         
         self.name = name
         self.location = location
@@ -113,3 +142,5 @@ class ActorProperties:
         self.animatedSprite = animatedSprite
         self.instanceName = instanceName
         self.tickEvent = tickEvent
+        self.intention = ''
+        self.staticSprite = staticSprite

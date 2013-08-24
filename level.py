@@ -1,4 +1,8 @@
 class TileLevel(object):
+    
+    TENT = 2
+    TREE = 3
+    
     def __init__(self, width = 0, height = 0):
         self.width = width
         self.height = height
@@ -7,6 +11,13 @@ class TileLevel(object):
         self.collision = self.get2DArray(width, height)
         
         self.fillWithTestData()
+        
+        self.placeTree(11, 7)
+        self.placeTree(15, 8)
+        
+        self.placeTent(10,13)
+        self.placeTent(16,17)
+        self.placeTent(16,17)
     
     def updateLevelSize(self):
         self.width = len(self.terrain[0])
@@ -17,6 +28,35 @@ class TileLevel(object):
         
         assert self.width == len(self.collision[0])
         assert self.height == len(self.collision)
+        
+
+    def placeBuilding(self, tx, ty, building, originOffset, collisionRect):
+        
+        self.building[ty-originOffset[1]][tx-originOffset[0]] = building
+        
+        for j in range(ty-originOffset[1]+collisionRect[1], 
+                       ty-originOffset[1]+collisionRect[1]+collisionRect[3]):
+            for i in range(tx-originOffset[0]+collisionRect[0],
+                           tx-originOffset[0]+collisionRect[0]+collisionRect[2]):
+                self.collision[j][i] = 1 if building > 0 else 0
+    
+    
+    def placeTree(self, tx, ty, place=True):
+        
+        originOffset = (1, 4)
+        collisionRect = (1, 4, 2, 1)
+        
+        self.placeBuilding(tx, ty, TileLevel.TREE if place else 0, 
+                           originOffset, collisionRect)
+        
+    def placeTent(self, tx, ty, place=True):
+        
+        originOffset = (2, 4)
+        collisionRect = (0, 2, 5, 3)
+        
+        self.placeBuilding(tx, ty, TileLevel.TENT if place else 0, 
+                           originOffset, collisionRect)
+        
     
     def fillWithTestData(self):
         
@@ -44,17 +84,17 @@ class TileLevel(object):
         self.building = [[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,0,0,0,0,0],
                          [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,0,0,0,0,0],
                          [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,0,0,0,0,0],
-                         [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 0, 0, 0,0,0,0,0,0],
-                         [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,3,0,0,0,0],
                          [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,0,0,0,0,0],
                          [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,0,0,0,0,0],
                          [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,0,0,0,0,0],
                          [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,0,0,0,0,0],
-                         [0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0,0,0,0,0,0],
                          [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,0,0,0,0,0],
                          [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,0,0,0,0,0],
                          [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,0,0,0,0,0],
-                         [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,2,0,0,0,0],
+                         [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,0,0,0,0,0],
+                         [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,0,0,0,0,0],
+                         [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,0,0,0,0,0],
+                         [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,0,0,0,0,0],
                          [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,0,0,0,0,0],
                          [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,0,0,0,0,0],
                          [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,0,0,0,0,0],
@@ -69,17 +109,17 @@ class TileLevel(object):
                           [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,0,0,0,0,0],
                           [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,0,0,0,0,0],
                           [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,0,0,0,0,0],
-                          [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0,0,0,0,0,0],
-                          [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,0,1,1,0,0],
                           [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,0,0,0,0,0],
                           [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,0,0,0,0,0],
-                          [0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 0,0,0,0,0,0],
-                          [0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 0,0,0,0,0,0],
-                          [0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 0,0,0,0,0,0],
                           [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,0,0,0,0,0],
-                          [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,1,1,1,1,1],
-                          [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,1,1,1,1,1],
-                          [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,1,1,1,1,1],
+                          [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,0,0,0,0,0],
+                          [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,0,0,0,0,0],
+                          [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,0,0,0,0,0],
+                          [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,0,0,0,0,0],
+                          [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,0,0,0,0,0],
+                          [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,0,0,0,0,0],
+                          [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,0,0,0,0,0],
+                          [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,0,0,0,0,0],
                           [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,0,0,0,0,0],
                           [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,0,0,0,0,0], ]
         
@@ -114,13 +154,19 @@ class TileLevel(object):
         if not (0 <= toJ < self.height):
             raise IndexError('Invalid toJ value')
         
-        if fromI == toI and fromJ == toJ:
-            return [(fromI, fromJ)]        
-        
         pathCellCache = {}
         
         openCells = []
         startCell = self.createPathCell(fromI, fromJ)
+        
+        # Jammed!
+        if not startCell.movable:
+            return []
+        
+        # No need to move anyway.
+        if fromI == toI and fromJ == toJ:
+            return [(fromI, fromJ)]        
+        
         openCells.append(startCell)
         
         while openCells:
@@ -133,19 +179,27 @@ class TileLevel(object):
                     cell = self.createPathCell(ni, nj)
                     pathCellCache[(ni, nj)] = cell
                 else:
-                    cell = pathCellCache[(ni, nj)] 
-                
-                if cell.movable and cell.expandedFrom is None:
+                    cell = pathCellCache[(ni, nj)]
+                    
+                if (cell.movable or (ni,nj)==(toI,toJ)) and cell.expandedFrom is None:
                     
                     cell.expandedFrom = current
                     openCells.append(cell)
+        
+        pathCellCache = {k:x for k,x in pathCellCache.items() if x.expandedFrom}
+        
+        if not pathCellCache:
+            return [(fromI, fromJ)]
+        
+        closestGoal = min(pathCellCache.items(),
+                          key=lambda (k,x): abs(toI-x.i) + abs(toJ-x.j))[1]
                     
         path = []
-        if pathCellCache.has_key((toI,toJ)):
-            pc = pathCellCache[(toI,toJ)]
-            while pc is not None:
+        pc = pathCellCache.get((closestGoal.i, closestGoal.j), None)
+        while pc is not None:
+            if pc.movable:
                 path.insert(0, (pc.i, pc.j))
-                pc = pc.expandedFrom
+            pc = pc.expandedFrom
         
         return path
 

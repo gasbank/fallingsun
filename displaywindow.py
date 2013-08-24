@@ -30,8 +30,10 @@ class SDisplayWindow(SActor):
         self.waterTile = pygame.image.load(os.path.join('data', '001-G_Water01.png'))
         self.grasslandTile = pygame.image.load(os.path.join('data', '001-Grassland01.png'))
         self.fighterTile = pygame.image.load(os.path.join('data', '001-Fighter01.png'))
+        self.thiefTile = pygame.image.load(os.path.join('data', '018-Thief03.png'))
+        self.farmerTile = pygame.image.load(os.path.join('data', '143-Farmer01.png'))
         
-        logging.info('The display actor created.')        
+        logging.info('The display actor created.')
         
     def getTaskletName(self):
         return "DisplayWindow"
@@ -306,7 +308,7 @@ class SDisplayWindow(SActor):
             return NORTH
         
         
-    def drawAnimatedCharacterSprite(self, screen, actorProp):
+    def drawAnimatedCharacterSprite(self, screen, actorProp, tileType):
         
         TS = 32  # Tile Size
         STS = 16  # Sub-Tile Size
@@ -320,7 +322,7 @@ class SDisplayWindow(SActor):
         animFrame = (actorProp.velocity * self.frame / 200) % 4
         direction = self.getDirectionFromAngle(actorProp.angle)
         
-        screen.blit(self.fighterTile,
+        screen.blit(tileType,
                     (TS * i + drawXOffset,
                      TS * j + drawYOffset), 
                     (1 * TS * animFrame + TS * 0 + STS * 0,
@@ -332,13 +334,19 @@ class SDisplayWindow(SActor):
         
         if actorProp.animatedSprite:
             
-            if actorProp.name == '001-Fighter01':
+            if actorProp.name == 'SPrey':
                 itemImage = self.fighterTile
+            elif actorProp.name == 'SWoodcutter':
+                itemImage = self.farmerTile
             else:
                 raise RuntimeError('Not available for the moment.')
             
-            self.drawAnimatedCharacterSprite(screen, actorProp)
+            self.drawAnimatedCharacterSprite(screen, actorProp, itemImage)
+        
+        elif actorProp.staticSprite:
             
+            pass
+        
         else:
         
             itemImage = self.getIcon(actorProp.name)

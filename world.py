@@ -1,7 +1,8 @@
 import stackless  # @UnresolvedImport
 from actor import SActor, NamedTasklet
 from collections import OrderedDict
-import math, logging
+import math
+import logging
 from tree import STree
 import random
 from home import SHome
@@ -19,8 +20,8 @@ class WorldState:
 class SWorld(SActor):
     def __init__(self, spawnTreeInterval=0, exitOnNoHavestables=False,
                  disableCollisionCheck=False):
-        SActor.__init__(self)
         
+        SActor.__init__(self)
         self.registeredActors = OrderedDict()
         self.aboutToBeKilledActors = OrderedDict()
         self.tickDisabledActors = OrderedDict()
@@ -53,6 +54,15 @@ class SWorld(SActor):
         for actor in self.aboutToBeKilledActors:
             actor.send((self.channel, 'YOU_ARE_DEAD'))
             actor.send_exception(TaskletExit)
+            
+            if self.registeredActors[actor].staticSprite:
+                
+                if self.registeredActors[actor].name == 'Tree':
+                    
+                    self.tileData.placeTree(int(self.registeredActors[actor].location[0]//32),
+                                            int(self.registeredActors[actor].location[1]//32),
+                                            False)
+            
             del self.registeredActors[actor]
         
         self.aboutToBeKilledActors.clear()
@@ -191,12 +201,20 @@ class SWorld(SActor):
             
             stackless.schedule()
             
-        print("The world tick loop about to exit...")
+        logging.info('The world tick loop about to exit...')
         
     def defaultMessageAction(self, args):
         sentFrom, msg, msgArgs = args[0], args[1], args[2:]
         if msg == 'JOIN':
             self.registeredActors[sentFrom] = msgArgs[0]
+            
+            if msgArgs[0].staticSprite:
+                
+                if msgArgs[0].name == 'Tree':
+                    
+                    self.tileData.placeTree(int(msgArgs[0].location[0]//32),
+                                            int(msgArgs[0].location[1]//32))
+            
         elif msg == 'UPDATE_VECTOR':
             self.registeredActors[sentFrom].angle = msgArgs[0]
             self.registeredActors[sentFrom].velocity = msgArgs[1]
@@ -206,8 +224,10 @@ class SWorld(SActor):
             self.registeredActors[sentFrom].intention = msgArgs[0]
         elif msg == 'UPDATE_MY_HP':
             self.registeredActors[sentFrom].hitpoints = msgArgs[0]
-            if msgArgs[0] == 0:
+            if msgArgs[0] <= 0:
                 self.aboutToBeKilledActors[sentFrom] = self.registeredActors[sentFrom]
+        elif msg == 'UPDATE_MY_STAMINA':
+            self.registeredActors[sentFrom].stamina = msgArgs[0]
         elif msg == 'KILLME':
             self.registeredActors[sentFrom].hitpoints = 0
             self.aboutToBeKilledActors[sentFrom] = self.registeredActors[sentFrom]

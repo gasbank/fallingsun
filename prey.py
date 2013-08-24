@@ -24,7 +24,7 @@ class SPrey(SActor):
         self.roamingPath = None
         self.restFor = 5
         self.world.send((self.channel, "JOIN",
-                         ActorProperties('001-Fighter01',
+                         ActorProperties(self.__class__.__name__,
                                          location=location,
                                          angle=self.angle,
                                          velocity=self.velocity,
@@ -53,31 +53,6 @@ class SPrey(SActor):
         
         self.world.send((self.channel, 'UPDATE_INTENTION', intention))
 
-    def findNewRoamingPathWithin(self, t, tileData):
-        
-        path = None
-        tryCount = 0
-        while not path:
-            
-            tryCount += 1
-            
-            assert tryCount < 100
-        
-            goalTile = self.getRandomTileAround(t)
-            
-            if not tileData.isMovable(int(goalTile[0]//32), int(goalTile[1]//32)):
-                stackless.schedule()
-                continue
-            
-            path = tileData.findPath(int(self.location[0]//32),
-                                     int(self.location[1]//32),
-                                     int(goalTile[0]//32),
-                                     int(goalTile[1]//32))
-
-        return path
-    
-    def getLocationFromTile(self, tileIndex):
-        return (tileIndex[0]*32+16, tileIndex[1]*32+16)
         
     def defaultMessageAction(self, args):
         _, msg, msgArgs = args[0], args[1], args[2:]

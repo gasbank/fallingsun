@@ -3,8 +3,7 @@ from actor import SActor, ActorProperties
 
 class SHome(SActor):
     def __init__(self, world, location=(0,0), instanceName="", staminaRefillSpeed=1):
-        self.instanceName = instanceName
-        SActor.__init__(self)
+        SActor.__init__(self, instanceName)
         self.world = world
         self.location = location
         self.gatherings = {}
@@ -20,9 +19,6 @@ class SHome(SActor):
                                          hitpoints=10)))
         
         logging.info('A home [%s] created.' % self.instanceName)
-        
-    def getTaskletName(self):
-        return self.instanceName
         
     def defaultMessageAction(self, args):
         sentFrom, msg, msgArgs = args[0], args[1], args[2:]
@@ -55,7 +51,10 @@ class SHome(SActor):
             else:
                 self.gatherings[gathering] = gatheringCount
                 
-            print "%s got %d %s. Now have %d" % (self.instanceName, gatheringCount, gathering, self.gatherings[gathering])
+            logging.info('%s got %d %s. Now have %d' % (self.instanceName,
+                                                        gatheringCount,
+                                                        gathering,
+                                                        self.gatherings[gathering]))
             
             #sentFrom.send((self.channel, 'CAN_BUILD', 'HOME'))
             

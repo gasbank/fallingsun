@@ -3,6 +3,8 @@ import random
 from world import SWorld
 from displaywindow import SDisplayWindow
 from prey import SPrey
+from tree import STree
+from woodcutter import SWoodcutter
 
 def main():
     random.seed(1)
@@ -11,7 +13,7 @@ def main():
 
     SDisplayWindow(world)
     
-    
+    '''
     for i in range(10):
         SPrey(world,
               location=(32*11+16,32*8+16),
@@ -31,7 +33,7 @@ def main():
               stamina=100,
               maxStamina=100,
               intention='RESTING')
-    
+    '''
     
     SPrey(world,
           location=(32*5+16,32*5+16),
@@ -41,6 +43,17 @@ def main():
           stamina=100,
           maxStamina=100,
           intention='ROAMING')
+    
+    STree(world, 'WOOD', location=(32*5,32*15), instanceName='Tree',
+          hitpoints=100, hitpointsDecay=0)
+    
+    SWoodcutter(world,
+                location=(32*0,32*16), 
+                velocity=1, 
+                instanceName='Woodcutter', 
+                roamingRadius=200, 
+                stamina=10, 
+                maxStamina=10)
     
     print 'Actors initialized.'
     

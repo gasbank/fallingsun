@@ -1,12 +1,16 @@
 # coding=utf-8
-import random, logging
+import random
+import logging
 from collections import OrderedDict
 from actor import SActor, ActorProperties
 
 class SWoodcutter(SActor):
-    def __init__(self, world, location=(0,0), angle=135, velocity=0, hitpoints=10, homeLocation=None, instanceName="", stamina=5, maxStamina=7, roamingRadius=100):
-        self.instanceName = instanceName
-        SActor.__init__(self)
+    def __init__(self, world, location=(0,0), angle=135, velocity=0,
+                 hitpoints=10, homeLocation=None, instanceName="",
+                 stamina=5, maxStamina=7, roamingRadius=100,
+                 intention='RESTING'):
+        
+        SActor.__init__(self, instanceName)
         self.time = 0
         self.deltaTime = 0
         self.angle = angle
@@ -25,6 +29,7 @@ class SWoodcutter(SActor):
         self.roamingTarget = None
         self.lastRoamingTargetTime = None
         self.roamingRadius = roamingRadius
+        self.roamingPath = None
         self.world.send((self.channel, "JOIN",
                          ActorProperties(self.__class__.__name__,
                                          location=location,
@@ -32,10 +37,29 @@ class SWoodcutter(SActor):
                                          velocity=self.velocity,
                                          height=32,
                                          width=16,
-                                         hitpoints=self.hitpoints)))
+                                         hitpoints=self.hitpoints,
+                                         animatedSprite=True,
+                                         instanceName=self.instanceName)))
+        
+        #self.changeIntention(intention)
         
         logging.info('A woodcutter [%s] created.' % self.instanceName)
     
+    def changeIntention(self, intention):
+        
+        if intention == 'ROAMING':
+            self.velocity = 10
+        elif intention == 'RESTING':
+            self.velocity = 0
+            self.restFor = 6 + random.random() * 6
+        else:
+            raise RuntimeError('Unknown intention for %s' % self)
+
+        self.lastIntentionTime = self.time        
+        self.intention = intention
+        
+        self.world.send((self.channel, 'UPDATE_INTENTION', intention))
+
     def getTaskletName(self):
         return self.instanceName
         
@@ -57,7 +81,12 @@ class SWoodcutter(SActor):
     
     def defaultMessageAction(self, args):
         sentFrom, msg, msgArgs = args[0], args[1], args[2:]
+        
+        logging.debug('%s received %s. (intention: %s)' % (self.getTaskletName(),
+                                                           msg, self.intention))
+        
         if msg == "WORLD_STATE":
+            
             self.deltaTime = msgArgs[0].time - self.time
             self.time = msgArgs[0].time
            
@@ -139,6 +168,34 @@ class SWoodcutter(SActor):
                         self.intention = 'ROAMING'
                         self.roamingTarget = None
             
+            elif self.intention is 'PATHFINDING':
+                
+                # If I don't have a roaming path, find for a new one.
+                if not self.roamingPath:
+                    tileData = msgArgs[0].tileData
+                    self.roamingPath = tileData.findPath(self.getTileLocation()[0],
+                                                         self.getTileLocation()[1],
+                                                         self.pathFindingTarget[0],
+                                                         self.pathFindingTarget[1])
+                    
+                # Or check if I am near the current roaming target
+                # location.
+                elif self.isNear(self.getLocationFromTile(self.roamingPath[0]),
+                                 9):
+                     
+                    # If near, remove the current target location
+                    self.roamingPath.pop(0)
+                    
+                # Update my angle and velocity if the roaming path available.
+                if self.roamingPath:
+                    
+                    angle = self.getLocationFromTile(self.roamingPath[0])
+                    self.angle = self.getAngleTo(angle)
+                                    
+                # Or change to the RESTING state.
+                else:
+                    self.changeIntention('RESTING')
+            
             
             #self.angle += 10.0 * (1.0 / msgArgs[0].updateRate)
             if self.angle >= 360:
@@ -150,7 +207,7 @@ class SWoodcutter(SActor):
             
             # 마지막에 깎지 
             self.stamina -= self.deltaTime
-            
+            #self.world.send((self.channel, "UPDATE_MY_STAMINA", self.stamina))
             
             # If stamina remains below the certain negative value,
             # the hitpoints will be decreased.
@@ -161,7 +218,7 @@ class SWoodcutter(SActor):
             
             
         elif msg == "COLLISION":
-       
+            
             if self.channel is msgArgs[0]:
                 target = msgArgs[1]
                 targetProp = msgArgs[1+2]
@@ -171,6 +228,9 @@ class SWoodcutter(SActor):
                 #targetProp = msgArgs[0+2]
             else:
                 raise RuntimeError("What happened?")
+            
+            logging.debug('%s collided with %s' % (self.getTaskletName(),
+                                                   targetProp.name))
             
             #print "Woodcutter channel =",self.channel, "/targetProp.name=", targetProp.name
             
