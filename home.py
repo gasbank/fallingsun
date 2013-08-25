@@ -1,4 +1,3 @@
-import logging
 from actor import SActor, ActorProperties
 
 class SHome(SActor):
@@ -8,7 +7,9 @@ class SHome(SActor):
         self.location = location
         self.gatherings = {}
         self.staminaRefillSpeed = staminaRefillSpeed
-        #print self.channel, "--JOIN-->", self.world
+        
+        self.debug('Created.')
+        
         self.world.send((self.channel, "JOIN",
                          ActorProperties(self.__class__.__name__,
                                          location=location,
@@ -16,9 +17,9 @@ class SHome(SActor):
                                          velocity=0,
                                          height=32,
                                          width=32,
-                                         hitpoints=10)))
-        
-        logging.info('A home [%s] created.' % self.instanceName)
+                                         staticSprite=True,
+                                         hitpoints=10,
+                                         instanceName=self.instanceName)))
         
     def defaultMessageAction(self, args):
         sentFrom, msg, msgArgs = args[0], args[1], args[2:]
@@ -46,17 +47,10 @@ class SHome(SActor):
             gathering = msgArgs[0]
             gatheringCount = msgArgs[1]
             
-            if self.gatherings.has_key(gathering):
-                self.gatherings[gathering] += gatheringCount
-            else:
-                self.gatherings[gathering] = gatheringCount
+            self.gatherings[gathering] = self.gatherings.get(gathering, 0) + gatheringCount
                 
-            logging.info('%s got %d %s. Now have %d' % (self.instanceName,
-                                                        gatheringCount,
-                                                        gathering,
-                                                        self.gatherings[gathering]))
-            
-            #sentFrom.send((self.channel, 'CAN_BUILD', 'HOME'))
+            self.info('%d %s acquired. Now have %d.'
+                      % (gatheringCount, gathering, self.gatherings[gathering]))
             
         elif msg == 'GIVE_ME_GATHERINGS':
             

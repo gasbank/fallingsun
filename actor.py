@@ -1,5 +1,7 @@
 import stackless  # @UnresolvedImport
-import random, math
+import random
+import math
+import logging
 
 gTasklets = []
 gChannels = []
@@ -27,9 +29,13 @@ class NamedChannel(stackless.channel):
         assert(len(self.name) > 0)
         return "<NamedChannel(name='%s')>" % self.name
         
-class SActor:
+class SActor(object):
+    @property
+    def instanceName(self):
+        return self._instanceName
+    
     def __init__(self, instanceName=''):
-        self.instanceName = instanceName
+        self._instanceName = instanceName
         
         self.channel = NamedChannel()
         self.channel.name = self.getTaskletName() + 'Channel'
@@ -43,7 +49,7 @@ class SActor:
         
         global gTasklets
         gTasklets.append(t)
-
+        
     def getTaskletName(self):
         return self.instanceName
     
@@ -86,9 +92,15 @@ class SActor:
         
         return self.sqDistanceWithMe(loc) < threshold
     
+    # Squared-distance with me
     def sqDistanceWithMe(self, loc):
         
         return sum(((self.location[i] - loc[i])**2 for i in [0,1]))
+    
+    # Manhattan-distance with me
+    def manDistanceWithMe(self, loc):
+        
+        return sum(abs(self.location[i] - loc[i]) for i in [0,1])
     
     def getAngleTo(self, loc):
         return math.degrees(math.atan2(-(self.location[0] - loc[0]),
@@ -123,9 +135,15 @@ class SActor:
     def getTileLocation(self):
         return (int(self.location[0]//32), int(self.location[1]//32))
     
+    def info(self, msg):
+        logging.info('%s:%s' % (self.instanceName, msg))
+        
+    def debug(self, msg):
+        logging.debug('%s:%s' % (self.instanceName, msg))
+    
 class ActorProperties:
     def __init__(self, name, location=(-1,-1), angle=0, velocity=0, height=-1,
-                 width=-1, hitpoints=1, public=True, havestable=False,
+                 width=-1, hitpoints=1, public=True, harvestable=False,
                  physical=True, animatedSprite=False, instanceName='',
                  tickEvent=True, staticSprite=False):
         
@@ -137,10 +155,12 @@ class ActorProperties:
         self.width = width
         self.hitpoints = hitpoints
         self.public = public
-        self.havestable = havestable
+        self.harvestable = harvestable
         self.physical = physical
         self.animatedSprite = animatedSprite
         self.instanceName = instanceName
         self.tickEvent = tickEvent
         self.intention = ''
         self.staticSprite = staticSprite
+        self.waitGauge = None
+        

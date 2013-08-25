@@ -6,8 +6,7 @@ from home import SHome
 
 class SArchitect(SActor):
     def __init__(self, world, location=(0,0), angle=0, velocity=0, hitpoints=10, homeLocation=None, instanceName="", stamina=5, maxStamina=7):
-        self.instanceName = instanceName
-        SActor.__init__(self)
+        SActor.__init__(self, instanceName)
         self.time = 0
         self.deltaTime = 0
         self.angle = angle
@@ -31,11 +30,9 @@ class SArchitect(SActor):
                                          velocity=self.velocity,
                                          height=32,
                                          width=16,
-                                         hitpoints=self.hitpoints)))
+                                         hitpoints=self.hitpoints,
+                                         instanceName=self.instanceName)))
     
-    def getTaskletName(self):
-        return self.instanceName
-        
     def checkIntention(self):
         if not self.intention:
             p = random.random()

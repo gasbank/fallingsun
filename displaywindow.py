@@ -10,7 +10,7 @@ sheight = 700
 
 class SDisplayWindow(SActor):
     def __init__(self, world):
-        SActor.__init__(self)
+        SActor.__init__(self, "DisplayWindow")
         self.frame = 0
         self.world = world
         self.icons = {}
@@ -33,11 +33,8 @@ class SDisplayWindow(SActor):
         self.thiefTile = pygame.image.load(os.path.join('data', '018-Thief03.png'))
         self.farmerTile = pygame.image.load(os.path.join('data', '143-Farmer01.png'))
         
-        logging.info('The display actor created.')
+        self.info('Created.')
         
-    def getTaskletName(self):
-        return "DisplayWindow"
-    
     def defaultMessageAction(self, args):
         _, msg, msgArgs = args[0], args[1], args[2:]
         if msg == "WORLD_STATE":
@@ -356,6 +353,7 @@ class SDisplayWindow(SActor):
         nameplateLoc = list(actorProp.location)
         
         hitpointsDrawHeight = 5
+        waitGaugeDrawHeight = 5
         
         # The hitpoints gauge
         pygame.draw.rect(screen, (0, 255, 0),
@@ -381,7 +379,17 @@ class SDisplayWindow(SActor):
                                            label.get_width(),
                                            label.get_height()))
         screen.blit(label, nameplateLoc)
+        nameplateLoc[1] += label.get_height()
     
+        # The wait gauge
+        if actorProp.waitGauge > 0:
+            
+            pygame.draw.rect(screen, (0, 0, 255),
+                             pygame.Rect(nameplateLoc[0],
+                                         nameplateLoc[1],
+                                         actorProp.waitGauge,
+                                         waitGaugeDrawHeight))
+            nameplateLoc[1] += waitGaugeDrawHeight
     
     def drawAllActors(self, screen, ws):
         
@@ -391,11 +399,11 @@ class SDisplayWindow(SActor):
     
     def updateDisplay(self, msgArgs):
         for event in pygame.event.get():
-            if event.type == pygame.QUIT or (event.type == pygame.KEYDOWN
-                                             and event.key == pygame.K_ESCAPE):
+            if any((event.type == pygame.QUIT,
+                    (event.type == pygame.KEYDOWN
+                     and event.key == pygame.K_ESCAPE))):
                 
-                print self.channel, "--APP_EXIT-->", self.world
-                # self.world.send((self.channel, "PRINT_INFO"))
+                self.info('--%s--> %s' % ('STOP_TICK_LOOP', self.world))
                 self.world.send((self.channel, "STOP_TICK_LOOP"))
                 
         screen = pygame.display.get_surface()

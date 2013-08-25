@@ -4,8 +4,7 @@ from actor import SActor, ActorProperties
 
 class SBandit(SActor):
     def __init__(self, world, location=(0,0), angle=0, velocity=0, hitpoints=10, homeLocation=None, instanceName="", stamina=100, maxStamina=100, attackPower=1):
-        self.instanceName = instanceName
-        SActor.__init__(self)
+        SActor.__init__(self, instanceName)
         self.time = 0
         self.deltaTime = 0
         self.angle = angle
@@ -31,12 +30,10 @@ class SBandit(SActor):
                                          velocity=self.velocity,
                                          height=32,
                                          width=16,
-                                         hitpoints=self.hitpoints)))
+                                         hitpoints=self.hitpoints,
+                                         instanceName=self.instanceName)))
         
         logging.info('A bandit [%s] created.' % self.instanceName)
-    
-    def getTaskletName(self):
-        return self.instanceName
         
     def checkIntention(self):
         if not self.intention:
@@ -160,5 +157,5 @@ class SBandit(SActor):
             if self.stamina > self.maxStamina:
                 self.stamina = self.maxStamina
         
-        elif msg == "IDENTIFY_HAVEST_RESULT":
+        elif msg == "IDENTIFY_HARVEST_RESULT":
             print self,self.intention,self.stamina

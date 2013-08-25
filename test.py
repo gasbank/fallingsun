@@ -40,6 +40,27 @@ class BasicTestCase(unittest.TestCase):
         self.assertFalse(worldActor.aboutToBeKilledActors)
         self.assertFalse(worldActor.tickDisabledActors)
         
+    def testWoodcutterAddStamina(self):
+        
+        random.seed(1)
+    
+        worldActor = SWorld() # For debugging use
+        world = worldActor.channel
+    
+        woodcutter = SWoodcutter(world, location=(100,100), velocity=4, 
+                                 instanceName='Woodcutter', roamingRadius=200, 
+                                 stamina=0, maxStamina=10)
+    
+        SHome(world, location=(100,100), instanceName='WoodcutterHome')
+        
+        world.send((None, 'START_SINGLE_TICK_TASKLET'))   
+        r = stackless.run()
+        logging.info('End of Program, stackless.run() result = %s' % r)
+        
+        self.assertGreater(woodcutter.stamina, 0)
+        #self.assertFalse(worldActor.aboutToBeKilledActors)
+        #self.assertFalse(worldActor.tickDisabledActors)
+        
     def testOneWoodcutterAndOneWood(self):
         
         '''
@@ -49,7 +70,7 @@ class BasicTestCase(unittest.TestCase):
         
         random.seed(1)
     
-        world = SWorld(exitOnNoHavestables=True).channel
+        world = SWorld(exitOnNoHarvestables=True).channel
     
         home = SHome(world, 
                      location=(100,100), 
@@ -61,8 +82,9 @@ class BasicTestCase(unittest.TestCase):
                     velocity=4, 
                     instanceName='Woodcutter', 
                     roamingRadius=200, 
-                    stamina=10, 
-                    maxStamina=10)
+                    stamina=10000,
+                    maxStamina=10000,
+                    intention='WOODCUTTING')
     
         tree = STree(world, 'WOOD', location=(150,150), instanceName='Tree')
          
