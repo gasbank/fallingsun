@@ -59,6 +59,17 @@ class SWoodcutter(SActor):
     @property
     def maxGatheringsReached(self):
         return sum(self.gatherings.itervalues()) >= self.maxGatherings
+
+    @property
+    def hitpoints(self):
+        return self._hitpoints
+    @property
+    def dead(self):
+        return self._hitpoints <= 0
+    @hitpoints.setter    
+    def hitpoints(self, value):
+        self._hitpoints = value
+        self.world.send((self.channel, "UPDATE_MY_HP", self._hitpoints))
     
     def __init__(self, world, location=(0,0), angle=135, velocity=0,
                  hitpoints=10, homeLocation=None, instanceName="",
@@ -71,7 +82,7 @@ class SWoodcutter(SActor):
         self.deltaTime = 0
         self.angle = angle
         self.velocity = velocity
-        self.hitpoints = hitpoints
+        self._hitpoints = hitpoints
         self.homeLocation = homeLocation
         self.world = world
         self.harvestTarget = None
@@ -262,12 +273,15 @@ class SWoodcutter(SActor):
             
             self.deltaTime = msgArgs[0].time - self.time
             self.time = msgArgs[0].time
-           
-            for actor in msgArgs[0].actors:
+            
+            actors = msgArgs[0].actors
+            tileData = msgArgs[0].tileData
+            
+            for actor in actors:
                 if actor[0] is self.channel: break
                     
             self.location = actor[1].location
-            tileData = msgArgs[0].tileData
+            
             #print self.intention
             
             if self.intention is 'ROAMING':
@@ -298,8 +312,7 @@ class SWoodcutter(SActor):
                 
             elif self.intention is 'PATHFINDING_HARVESTABLE':
                 
-                h = self.findClosestHarvestable(msgArgs[0].tileData,
-                                                msgArgs[0].actors)
+                h = self.findClosestHarvestable(tileData, actors)
                 
                 if h:
                     self.doPathFinding(tileData,
@@ -311,12 +324,11 @@ class SWoodcutter(SActor):
             
             elif self.intention is 'HARVESTING':
                 
-                self.doHarvesting(msgArgs[0].tileData, msgArgs[0].actors)
+                self.doHarvesting(tileData, actors)
                 
             elif self.intention is 'STOCK_UP_ALL_HARVESTABLES':
                 
-                self.doStockUpAllHarvestables(msgArgs[0].tileData,
-                                              msgArgs[0].actors)
+                self.doStockUpAllHarvestables(tileData, actors)
                 
                 
             else:
@@ -343,8 +355,8 @@ class SWoodcutter(SActor):
             # If stamina remains below the certain negative value,
             # the hitpoints will be decreased.
             if self.stamina < -100:
-                self.setHitpoints(self.hitpoints - 1)
-                if self.hitpoints <= 0:
+                self.hitpoints -= 1
+                if self.dead:
                     self.deathReason = 'STARVATION'
             
             
@@ -385,14 +397,9 @@ class SWoodcutter(SActor):
                 sentFrom.send((self.channel, "ACQUIRE", k, v))
                 
         elif msg == 'ATTACK':
-            self.setHitpoints(self.hitpoints - msgArgs[0])
+            self.hitpoints -= msgArgs[0]
             
         elif msg == 'YOU_ARE_DEAD':
             self.info('I am dead by %s.' % self.deathReason)
         else:
             raise RuntimeError('%s: Unknown message received - %s' % (self, msg))
-
-    def setHitpoints(self, newValue):
-        self.hitpoints = newValue
-        self.world.send((self.channel, "UPDATE_MY_HP", self.hitpoints))
-        

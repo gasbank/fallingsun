@@ -12,7 +12,7 @@ def main():
     random.seed(1)
     
     #world = SWorld(disableCollisionCheck=True).channel
-    world = SWorld().channel
+    world = SWorld(useTestData=True).channel
 
     display = SDisplayWindow(world).channel
     
@@ -68,7 +68,7 @@ def main():
                      homeLocation=home.location, velocity=20,
                      home=home.channel,
                      instanceName='Woodcutter', roamingRadius=200, 
-                     stamina=1000, maxStamina=1000,
+                     stamina=10, maxStamina=1000,
                      intention='PATHFINDING_HARVESTABLE',
                      display=display)
     
@@ -76,7 +76,7 @@ def main():
                      homeLocation=home2.location, velocity=20,
                      home=home2.channel,
                      instanceName='Wc2', roamingRadius=200, 
-                     stamina=1000, maxStamina=1000,
+                     stamina=10, maxStamina=1000,
                      intention='PATHFINDING_HARVESTABLE',
                      display=display)
     

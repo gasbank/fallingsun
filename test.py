@@ -16,6 +16,11 @@ class BasicTestCase(unittest.TestCase):
     def setUp(self):
         pass
     
+    def tick(self, world):
+        logging.debug('Tick!')
+        world.send((None, 'START_SINGLE_TICK_TASKLET'))
+        self.assertIsNone(stackless.run())
+    
     def testHomelessStarvation(self):
         
         random.seed(1)
@@ -40,6 +45,84 @@ class BasicTestCase(unittest.TestCase):
         self.assertFalse(worldActor.aboutToBeKilledActors)
         self.assertFalse(worldActor.tickDisabledActors)
         
+    def testTeleport(self):
+    
+        random.seed(1)
+        
+        worldActor = SWorld() # For debugging use
+        world = worldActor.channel
+    
+        location0 = (32*3+16,32*3+16)
+        wc = SWoodcutter(world, location=location0, velocity=0,
+                         instanceName='Woodcutter', roamingRadius=200, 
+                         stamina=10, maxStamina=100, intention='RESTING')
+    
+        self.tick(world)
+        self.assertEqual('RESTING', wc.intention)
+        self.assertEqual(location0, wc.location)
+        
+        location1 = (32*7+16,32*7+16)
+        worldActor.teleportActor(wc.channel, location1)
+        self.tick(world)
+        self.assertEqual('RESTING', wc.intention)
+        self.assertEqual(location1, wc.location)
+        
+    def testEnterLeave(self):
+        
+        logging.getLogger().setLevel(logging.DEBUG)
+        
+        random.seed(1)
+        
+        worldActor = SWorld() # For debugging use
+        world = worldActor.channel
+    
+        wcLoc0 = (32*3+16,32*3+16)
+        wc = SWoodcutter(world, location=wcLoc0, velocity=0,
+                         instanceName='Woodcutter', roamingRadius=200, 
+                         stamina=10, maxStamina=100, intention='RESTING')
+    
+        homeLoc0 = (32*8,32*8)
+        home = SHome(world, location=homeLoc0, instanceName='WoodcutterHome')
+        
+        wcNb = wc.neighbors
+        homeNb = home.neighbors
+        self.assertEqual([], wcNb)
+        self.assertEqual([], homeNb)
+        
+        self.tick(world)
+        self.assertEqual([], wcNb)
+        self.assertEqual([], homeNb)
+        
+        wcLoc1 = (32*8+16,32*9+16)
+        worldActor.teleportActor(wc.channel, wcLoc1)
+        self.tick(world)
+        self.assertEqual([home.channel], wcNb)
+        self.assertEqual([wc.channel], homeNb)
+        
+        wcLoc2 = (32*9+16,32*8+16)
+        worldActor.teleportActor(wc.channel, wcLoc2)
+        self.tick(world)
+        self.assertEqual([home.channel], wcNb)
+        self.assertEqual([wc.channel], homeNb)
+        
+        wcLoc3 = (32*9+16+5,32*8+16+5)
+        worldActor.teleportActor(wc.channel, wcLoc3)
+        self.tick(world)
+        self.assertEqual([home.channel], wcNb)
+        self.assertEqual([wc.channel], homeNb)
+        
+        wcLoc4 = (32*9+16+5+32,32*8+16+5+32)
+        worldActor.teleportActor(wc.channel, wcLoc4)
+        self.tick(world)
+        self.assertEqual([], wcNb)
+        self.assertEqual([], homeNb)
+        
+        wcLoc5 = (32*1+16,32*2+16)
+        worldActor.teleportActor(wc.channel, wcLoc5)
+        self.tick(world)
+        self.assertEqual([], wcNb)
+        self.assertEqual([], homeNb)
+        
     def testWoodcutterAddStamina(self):
         
         random.seed(1)
@@ -47,19 +130,17 @@ class BasicTestCase(unittest.TestCase):
         worldActor = SWorld() # For debugging use
         world = worldActor.channel
     
-        woodcutter = SWoodcutter(world, location=(100,100), velocity=4, 
+        woodcutter = SWoodcutter(world, location=(32*6+16,32*4+16), velocity=4, 
                                  instanceName='Woodcutter', roamingRadius=200, 
                                  stamina=0, maxStamina=10)
     
-        SHome(world, location=(100,100), instanceName='WoodcutterHome')
+        SHome(world, location=(32*6,32*3), instanceName='WoodcutterHome')
         
         world.send((None, 'START_SINGLE_TICK_TASKLET'))   
         r = stackless.run()
         logging.info('End of Program, stackless.run() result = %s' % r)
         
         self.assertGreater(woodcutter.stamina, 0)
-        #self.assertFalse(worldActor.aboutToBeKilledActors)
-        #self.assertFalse(worldActor.tickDisabledActors)
         
     def testOneWoodcutterAndOneWood(self):
         
@@ -73,20 +154,21 @@ class BasicTestCase(unittest.TestCase):
         world = SWorld(exitOnNoHarvestables=True).channel
     
         home = SHome(world, 
-                     location=(100,100), 
+                     location=(32*5,32*5), 
                      instanceName='WoodcutterHome')
         
         SWoodcutter(world, 
-                    location=(100,100), 
+                    location=(32*3+16,32*3+16), 
                     homeLocation=home.location, 
                     velocity=4, 
                     instanceName='Woodcutter', 
                     roamingRadius=200, 
                     stamina=10000,
                     maxStamina=10000,
-                    intention='WOODCUTTING')
+                    intention='PATHFINDING_HARVESTABLE')
     
-        tree = STree(world, 'WOOD', location=(150,150), instanceName='Tree')
+        tree = STree(world, 'WOOD', location=(32*4,32*3), instanceName='Tree',
+                     hitpoints=1)
          
         world.send((None, 'START_TICK_TASKLET'))   
         r = stackless.run()

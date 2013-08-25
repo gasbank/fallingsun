@@ -34,9 +34,14 @@ class SActor(object):
     def instanceName(self):
         return self._instanceName
     
+    @property
+    def neighbors(self):
+        return self._neighbors
+    
     def __init__(self, instanceName='', display=None):
         self._instanceName = instanceName
         self._display = display
+        self._neighbors = []
         
         self.channel = NamedChannel()
         self.channel.name = self.getTaskletName() + 'Channel'
@@ -168,4 +173,4 @@ class ActorProperties:
         self.intention = ''
         self.staticSprite = staticSprite
         self.waitGauge = None
-        
+      

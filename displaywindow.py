@@ -404,13 +404,14 @@ class SDisplayWindow(SActor):
         screen.blit(label, nameplateLoc)
         nameplateLoc[1] += label.get_height()
         
-        label = self.font.render(actorProp.intention, 1, (0, 0, 0))
-        pygame.draw.rect(screen, bgColor, (nameplateLoc[0],
-                                           nameplateLoc[1],
-                                           label.get_width(),
-                                           label.get_height()))
-        screen.blit(label, nameplateLoc)
-        nameplateLoc[1] += label.get_height()
+        if actorProp.intention:
+            label = self.font.render(actorProp.intention, 1, (0, 0, 0))
+            pygame.draw.rect(screen, bgColor, (nameplateLoc[0],
+                                               nameplateLoc[1],
+                                               label.get_width(),
+                                               label.get_height()))
+            screen.blit(label, nameplateLoc)
+            nameplateLoc[1] += label.get_height()
     
         # The wait gauge
         if actorProp.waitGauge > 0:

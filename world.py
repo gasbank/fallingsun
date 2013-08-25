@@ -16,8 +16,8 @@ class WorldState:
         
         
 class SWorld(SActor):
-    def __init__(self, spawnTreeInterval=0, exitOnNoharvestables=False,
-                 disableCollisionCheck=False):
+    def __init__(self, spawnTreeInterval=0, exitOnNoHarvestables=False,
+                 disableCollisionCheck=False, useTestData=False):
         
         SActor.__init__(self, 'World')
         
@@ -34,11 +34,11 @@ class SWorld(SActor):
         self.tickOnlyOnce = False
 
         # Level
-        self.tileData = level.TileLevel(15, 15)
+        self.tileData = level.TileLevel(15, 15, useTestData=useTestData)
         
         self.showHarvestResult = False
         self.spawnTreeInterval = spawnTreeInterval
-        self.exitOnNoharvestables = exitOnNoharvestables
+        self.exitOnNoHarvestables = exitOnNoHarvestables
         self.lastSpawnTreeTime = -1
         self.disableCollisionCheck = disableCollisionCheck
         
@@ -168,6 +168,28 @@ class SWorld(SActor):
                 self.tickDisabledActors[actor] = self.registeredActors[actor]
                 del self.registeredActors[actor]
 
+
+    def sendNeighborEnterLeaveToActors(self):
+        
+        neighbors = {}
+        
+        for a, p in self.registeredActors.iteritems():
+            
+            k = self.tileData.toTileIndex(p.location)
+            
+            if neighbors.has_key(k): continue
+            
+            for aa, pp in self.registeredActors.iteritems():
+                if a is aa: continue
+                
+                kk = self.tileData.toTileIndex(pp.location)
+                
+                if abs(k[0] - kk[0]) + abs(k[1] - kk[1]) <= 1:
+                    neighbors[k] = neighbors.get(k, []) + [aa]
+        
+        self.debug('neighbors:%s' % neighbors)
+    
+    
     def processOneTick(self, startTime):
         # The whole thing that happens during a tick!
         
@@ -175,6 +197,7 @@ class SWorld(SActor):
         self.killDeadActors()
         self.updateActorPosition()
         self.sendWorldStateToActors(startTime)
+        self.sendNeighborEnterLeaveToActors()
 
         if 0 < self.spawnTreeInterval < startTime - self.lastSpawnTreeTime:
             self.spawnTree()
@@ -184,7 +207,7 @@ class SWorld(SActor):
             self.printHarvestResult()
             self.showHarvestResult = False
             
-        if self.exitOnNoharvestables:
+        if self.exitOnNoHarvestables:
             harvestables = self.getharvestables()
             if not harvestables:
                 self.tickLoopEnable = False
@@ -202,6 +225,7 @@ class SWorld(SActor):
             
             if self.tickOnlyOnce:
                 self.tickOnlyOnce = False
+                self.tickTasklet = None
                 break
             
             stackless.schedule()
@@ -278,4 +302,10 @@ class SWorld(SActor):
             
     def getharvestables(self):
         return [k for k,v in self.registeredActors.items() if v.harvestable]
+
+    
+    def teleportActor(self, actor, location):
+        self.registeredActors[actor].location = location
+    
+    
             

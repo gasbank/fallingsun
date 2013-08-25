@@ -3,14 +3,14 @@ class TileLevel(object):
     TENT = 2
     TREE = 3
     
-    def __init__(self, width = 0, height = 0):
+    def __init__(self, width = 0, height = 0, useTestData=False):
         self.width = width
         self.height = height
         self.terrain = self.get2DArray(width, height)
         self.building = self.get2DArray(width, height)
         self.collision = self.get2DArray(width, height)
         
-        self.fillWithTestData()
+        if useTestData: self.fillWithTestData()
         
         #self.placeTree(11, 7)
         #self.placeTree(15, 8)
@@ -18,6 +18,9 @@ class TileLevel(object):
         #self.placeTent(10,13)
         #self.placeTent(16,17)
         #self.placeTent(16,17)
+    
+    def toTileIndex(self, location):
+        return (int(location[0]//32), int(location[1]//32))
     
     def updateLevelSize(self):
         self.width = len(self.terrain[0])

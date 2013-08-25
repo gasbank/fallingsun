@@ -23,10 +23,10 @@ class SHome(SActor):
         
     def defaultMessageAction(self, args):
         sentFrom, msg, msgArgs = args[0], args[1], args[2:]
-        if msg == "WORLD_STATE":
+        if msg == 'WORLD_STATE':
             pass
         
-        elif msg == "COLLISION":
+        elif msg == 'COLLISION':
             if self.channel is msgArgs[0]:
                 target = msgArgs[1]
                 targetProp = msgArgs[1+2]
@@ -64,4 +64,9 @@ class SHome(SActor):
                     reply[k] = requests[k]
                     
             sentFrom.send((self.channel, 'ACQUIRE', reply))
+        
+        elif msg == 'NEIGHBOR_ENTER':
+            pass
+        elif msg == 'NEIGHBOR_LEAVE':
+            pass
             
