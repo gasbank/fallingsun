@@ -56,12 +56,17 @@ class SWoodcutter(SActor):
     def staminaFull(self):
         return self.stamina >= self.maxStamina
     
+    @property
+    def maxGatheringsReached(self):
+        return sum(self.gatherings.itervalues()) >= self.maxGatherings
+    
     def __init__(self, world, location=(0,0), angle=135, velocity=0,
                  hitpoints=10, homeLocation=None, instanceName="",
                  stamina=5, maxStamina=7, roamingRadius=100,
-                 intention='RESTING', home=None):
+                 intention='RESTING', home=None, display=None,
+                 maxGatherings=2):
         
-        SActor.__init__(self, instanceName)
+        SActor.__init__(self, instanceName, display)
         self.time = 0
         self.deltaTime = 0
         self.angle = angle
@@ -83,6 +88,7 @@ class SWoodcutter(SActor):
         self._intention = None
         self._waitGauge = None
         self.home = home
+        self.maxGatherings = maxGatherings
         
         self.debug('Created.')
         
@@ -98,8 +104,6 @@ class SWoodcutter(SActor):
                                          instanceName=self.instanceName)))
         
         self.intention = intention
-    
-    
     
     def isNeighborTiles(self, tileData, location):
         
@@ -170,8 +174,13 @@ class SWoodcutter(SActor):
             self.intention = nextIntention
     
     
+    
     def doHarvesting(self, tileData, actors):
         HARVEST_WAIT_COST = 50
+        
+        if self.maxGatheringsReached:
+            self.intention = 'PATHFINDING_HOME'
+            return
                     
         # I'm near the harvestables but don't have any target.
         # Let's find a new target.
@@ -357,6 +366,8 @@ class SWoodcutter(SActor):
             gathering = msgArgs[0]
             gatheringCount = msgArgs[1]
             self.gatherings[gathering] = self.gatherings.get(gathering, 0) + gatheringCount
+            self.sendDisplay((self.channel, 'DRAW_FADEOUT_TEXT', '%s+%d'
+                              % (gathering, gatheringCount), self.location))
 
         elif msg == "IDENTIFY_HARVEST_RESULT":
             #print self.channel, self.instanceName, "HARVESTED:", self.gatherings

@@ -2,29 +2,59 @@
 from actor import SActor, ActorProperties
 import pygame
 import os
-import logging
-import math
 
 swidth = 700
 sheight = 700
 
+class FadeoutText(object):
+    def __init__(self, font, text, location, maxAge=5.0, color=(0,0,0),
+                 maxOffset=10.0):
+        self._label = font.render(text, 1, color)
+        self._age = 0
+        self._maxAge = maxAge
+        self._location = location
+        self._maxOffset = maxOffset
+    
+    @property
+    def ageRatio(self):
+        return max(0.0, min(self._age / self._maxAge, 1.0))
+        
+    @property
+    def location(self):
+        return (self._location[0],
+                self._location[1] - self.ageRatio * self._maxOffset)
+        
+    @property
+    def dead(self):
+        return self._age >= self._maxAge
+        
+    def draw(self, deltaTime):
+        if not self.dead:
+            screen = pygame.display.get_surface()
+            screen.blit(self._label, self.location)
+            self._age += deltaTime
+    
+        
 class SDisplayWindow(SActor):
     def __init__(self, world):
         SActor.__init__(self, "DisplayWindow")
         self.frame = 0
         self.world = world
         self.icons = {}
+        self.time = 0
+        
         pygame.init()
         
-        #self.font = pygame.font.SysFont("Gulimew", 20)
         self.font = pygame.font.Font('C:\windows\Fonts\GULIM.TTC', 10)
+        self.bigFont = pygame.font.Font('C:\windows\Fonts\ARIALNBI.ttf', 12)
         
         pygame.display.set_mode((swidth, sheight))
-        pygame.display.set_caption("MmoActor")
-        # print self.channel, "--JOIN-->", self.world
+        pygame.display.set_caption("Falling Sun")
         self.world.send((self.channel, "JOIN",
                          ActorProperties(self.__class__.__name__,
                                          public=False)))
+        
+        self._fadeoutTexts = []
         
         self.dustRoadTile = pygame.image.load(os.path.join('data', '004-G_Ground02.png'))
         self.waterTile = pygame.image.load(os.path.join('data', '001-G_Water01.png'))
@@ -37,10 +67,11 @@ class SDisplayWindow(SActor):
         
     def defaultMessageAction(self, args):
         _, msg, msgArgs = args[0], args[1], args[2:]
-        if msg == "WORLD_STATE":
-            # print "Display updated"
+        if msg == 'WORLD_STATE':
             self.updateDisplay(msgArgs)
-            pass
+        elif msg == 'DRAW_FADEOUT_TEXT':
+            self._fadeoutTexts.append(FadeoutText(self.bigFont, msgArgs[0],
+                                                  msgArgs[1]))
             
     def getIcon(self, iconName):
         if self.icons.has_key(iconName):
@@ -397,7 +428,17 @@ class SDisplayWindow(SActor):
             self.drawActor(screen, actorProp)
     
     
+    def drawFadeoutTexts(self, screen):
+        for ft in self._fadeoutTexts:
+            ft.draw(self.deltaTime)
+    
+        self._fadeoutTexts = [ft for ft in self._fadeoutTexts if not ft.dead]
+    
     def updateDisplay(self, msgArgs):
+        
+        self.deltaTime = msgArgs[0].time - self.time
+        self.time = msgArgs[0].time
+        
         for event in pygame.event.get():
             if any((event.type == pygame.QUIT,
                     (event.type == pygame.KEYDOWN
@@ -423,7 +464,7 @@ class SDisplayWindow(SActor):
         self.drawGroundBuildingTiles(screen, ws)
         self.drawAllActors(screen, ws)
         self.drawUpperBuildingTiles(screen, ws)
-        
+        self.drawFadeoutTexts(screen)
         
         pygame.display.flip()
         

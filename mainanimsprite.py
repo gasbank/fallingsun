@@ -14,7 +14,7 @@ def main():
     #world = SWorld(disableCollisionCheck=True).channel
     world = SWorld().channel
 
-    SDisplayWindow(world)
+    display = SDisplayWindow(world).channel
     
     '''
     for i in range(10):
@@ -69,14 +69,16 @@ def main():
                      home=home.channel,
                      instanceName='Woodcutter', roamingRadius=200, 
                      stamina=1000, maxStamina=1000,
-                     intention='PATHFINDING_HARVESTABLE')
+                     intention='PATHFINDING_HARVESTABLE',
+                     display=display)
     
     SWoodcutter(world, location=(32*0+16,32*2+16),
                      homeLocation=home2.location, velocity=20,
                      home=home2.channel,
                      instanceName='Wc2', roamingRadius=200, 
                      stamina=1000, maxStamina=1000,
-                     intention='PATHFINDING_HARVESTABLE')
+                     intention='PATHFINDING_HARVESTABLE',
+                     display=display)
     
     logging.info('All actors initialized successfully.')
     logging.info('Starting the tick tasklet...')

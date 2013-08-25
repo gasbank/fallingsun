@@ -34,8 +34,9 @@ class SActor(object):
     def instanceName(self):
         return self._instanceName
     
-    def __init__(self, instanceName=''):
+    def __init__(self, instanceName='', display=None):
         self._instanceName = instanceName
+        self._display = display
         
         self.channel = NamedChannel()
         self.channel.name = self.getTaskletName() + 'Channel'
@@ -140,6 +141,10 @@ class SActor(object):
         
     def debug(self, msg):
         logging.debug('%s:%s' % (self.instanceName, msg))
+        
+    def sendDisplay(self, msg):
+        if self._display:
+            self._display.send(msg)
     
 class ActorProperties:
     def __init__(self, name, location=(-1,-1), angle=0, velocity=0, height=-1,
