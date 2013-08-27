@@ -86,42 +86,82 @@ class BasicTestCase(unittest.TestCase):
         
         wcNb = wc.neighbors
         homeNb = home.neighbors
-        self.assertEqual([], wcNb)
-        self.assertEqual([], homeNb)
+        self.assertEqual(set(), wcNb)
+        self.assertEqual(set(), homeNb)
         
         self.tick(world)
-        self.assertEqual([], wcNb)
-        self.assertEqual([], homeNb)
+        self.assertEqual(set(), wcNb)
+        self.assertEqual(set(), homeNb)
         
         wcLoc1 = (32*8+16,32*9+16)
         worldActor.teleportActor(wc.channel, wcLoc1)
         self.tick(world)
-        self.assertEqual([home.channel], wcNb)
-        self.assertEqual([wc.channel], homeNb)
+        self.assertEqual(set([home.channel]), wcNb)
+        self.assertEqual(set([wc.channel]), homeNb)
         
         wcLoc2 = (32*9+16,32*8+16)
         worldActor.teleportActor(wc.channel, wcLoc2)
         self.tick(world)
-        self.assertEqual([home.channel], wcNb)
-        self.assertEqual([wc.channel], homeNb)
+        self.assertEqual(set([home.channel]), wcNb)
+        self.assertEqual(set([wc.channel]), homeNb)
         
         wcLoc3 = (32*9+16+5,32*8+16+5)
         worldActor.teleportActor(wc.channel, wcLoc3)
         self.tick(world)
-        self.assertEqual([home.channel], wcNb)
-        self.assertEqual([wc.channel], homeNb)
+        self.assertEqual(set([home.channel]), wcNb)
+        self.assertEqual(set([wc.channel]), homeNb)
         
         wcLoc4 = (32*9+16+5+32,32*8+16+5+32)
         worldActor.teleportActor(wc.channel, wcLoc4)
         self.tick(world)
-        self.assertEqual([], wcNb)
-        self.assertEqual([], homeNb)
+        self.assertEqual(set(), wcNb)
+        self.assertEqual(set(), homeNb)
         
         wcLoc5 = (32*1+16,32*2+16)
         worldActor.teleportActor(wc.channel, wcLoc5)
         self.tick(world)
-        self.assertEqual([], wcNb)
-        self.assertEqual([], homeNb)
+        self.assertEqual(set(), wcNb)
+        self.assertEqual(set(), homeNb)
+        
+        wc2Loc0 = (32*1+16,32*2+16)
+        wc2 = SWoodcutter(world, location=wc2Loc0, velocity=0,
+                          instanceName='Woodcutter2', roamingRadius=200, 
+                          stamina=10, maxStamina=100, intention='RESTING')
+        wc2Nb = wc2.neighbors
+        
+        self.tick(world)
+        self.assertEqual(set([wc2.channel]), wcNb)
+        self.assertEqual(set([wc.channel]), wc2Nb)
+        self.assertEqual(set(), homeNb)
+        
+        worldActor.teleportActor(wc.channel, wcLoc2)
+        worldActor.teleportActor(wc2.channel, wcLoc2)
+        self.tick(world)
+        self.assertEqual(set([home.channel, wc2.channel]), wcNb)
+        self.assertEqual(set([home.channel, wc.channel]), wc2Nb)
+        self.assertEqual(set([wc.channel, wc2.channel]), homeNb)
+        
+        worldActor.teleportActor(wc.channel, wcLoc3)
+        self.tick(world)
+        self.assertEqual(set([home.channel, wc2.channel]), wcNb)
+        self.assertEqual(set([home.channel, wc.channel]), wc2Nb)
+        self.assertEqual(set([wc.channel, wc2.channel]), homeNb)
+        
+        wc.hitpoints = 0
+        wc.deathReason = 'TEST'
+        self.tick(world)
+        self.assertEqual(set([home.channel]), wc2Nb)
+        self.assertEqual(set([wc2.channel]), homeNb)
+        
+        self.tick(world)
+        self.assertEqual(set([home.channel]), wc2Nb)
+        self.assertEqual(set([wc2.channel]), homeNb)
+        
+        wc2.hitpoints = 0
+        wc2.deathReason = 'TEST'
+        self.tick(world)
+        self.assertEqual(set(), homeNb)
+        
         
     def testWoodcutterAddStamina(self):
         

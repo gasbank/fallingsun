@@ -1,13 +1,16 @@
-from actor import SActor, ActorProperties
+import stackless  # @UnresolvedImport
+from actor import SActor, ActorProperties, NamedTasklet, NamedChannel
 
 class SHome(SActor):
-    def __init__(self, world, location=(0,0), instanceName="", staminaRefillSpeed=1):
+    def __init__(self, world, location=(0,0), instanceName="", staminaRefillSpeed=6):
         SActor.__init__(self, instanceName)
+        self.time = 0
+        self.deltaTime = 0
         self.world = world
         self.location = location
         self.gatherings = {}
         self.staminaRefillSpeed = staminaRefillSpeed
-        
+        self.tasklets = {}
         self.debug('Created.')
         
         self.world.send((self.channel, "JOIN",
@@ -20,28 +23,26 @@ class SHome(SActor):
                                          staticSprite=True,
                                          hitpoints=10,
                                          instanceName=self.instanceName)))
-        
+    
+    def taskAddStamina(self, channel, target):
+        while 1:
+            startTime = self.time
+            while self.time - startTime < 5:
+                channel.receive()
+                
+            target.send((self.channel, 'ADD_STAMINA', self.staminaRefillSpeed))
+            
     def defaultMessageAction(self, args):
         sentFrom, msg, msgArgs = args[0], args[1], args[2:]
         if msg == 'WORLD_STATE':
-            pass
-        
-        elif msg == 'COLLISION':
-            if self.channel is msgArgs[0]:
-                target = msgArgs[1]
-                targetProp = msgArgs[1+2]
-            elif self.channel is msgArgs[1]:
-                raise RuntimeError("What happened?")
-                target = msgArgs[0]
-                targetProp = msgArgs[0+2]
-            else:
-                raise RuntimeError("What happened?")
+            self.deltaTime = msgArgs[0].time - self.time
+            self.time = msgArgs[0].time
             
-            if targetProp.name in ["SWoodcutter", "SArchitect", "SBandit"]:
-                target.send((self.channel, "ADD_STAMINA", self.staminaRefillSpeed))
-                
-            if targetProp.name in ["SWoodcutter"]:
-                target.send((self.channel, "CAN_STOCK_GATHERINGS"))
+            for k,v in self.tasklets.iteritems():
+                v.send(None)
+            
+        elif msg == 'COLLISION':
+            pass
             
         elif msg == 'ACQUIRE':
             gathering = msgArgs[0]
@@ -65,8 +66,18 @@ class SHome(SActor):
                     
             sentFrom.send((self.channel, 'ACQUIRE', reply))
         
-        elif msg == 'NEIGHBOR_ENTER':
-            pass
-        elif msg == 'NEIGHBOR_LEAVE':
-            pass
-            
+        elif msg == 'NEIGHBORS_LEFT':
+            self._neighbors.difference_update(msgArgs[0])
+            self.debug('Left:%s'%msgArgs[0])
+            for newlyLeft in msgArgs[0]:
+                cname = str(newlyLeft)+':AddStamina'
+                self.tasklets[cname].send_exception(TaskletExit)
+                del self.tasklets[cname]
+        elif msg == 'NEIGHBORS_ENTERED':
+            self._neighbors.update(msgArgs[0])
+            self.debug('Entered:%s'%msgArgs[0])
+            for newlyEntered in msgArgs[0]:
+                c = NamedChannel()
+                c.name = str(newlyEntered)+':AddStamina'
+                self.tasklets[c.name] = c
+                NamedTasklet(self.taskAddStamina)(c, newlyEntered)

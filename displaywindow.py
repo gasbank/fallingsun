@@ -72,7 +72,9 @@ class SDisplayWindow(SActor):
         elif msg == 'DRAW_FADEOUT_TEXT':
             self._fadeoutTexts.append(FadeoutText(self.bigFont, msgArgs[0],
                                                   msgArgs[1]))
-            
+        else:
+            raise RuntimeError('Unknown message')
+        
     def getIcon(self, iconName):
         if self.icons.has_key(iconName):
             return self.icons[iconName]

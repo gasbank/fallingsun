@@ -80,6 +80,14 @@ def main():
                      intention='PATHFINDING_HARVESTABLE',
                      display=display)
     
+    SWoodcutter(world, location=(32*16+16,32*18+16),
+                     homeLocation=home2.location, velocity=20,
+                     home=home2.channel,
+                     instanceName='Wc3-rest', roamingRadius=200, 
+                     stamina=6, maxStamina=10,
+                     intention='RESTING',
+                     display=display)
+    
     logging.info('All actors initialized successfully.')
     logging.info('Starting the tick tasklet...')
     

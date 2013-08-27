@@ -168,16 +168,14 @@ class SWorld(SActor):
                 self.tickDisabledActors[actor] = self.registeredActors[actor]
                 del self.registeredActors[actor]
 
-
     def sendNeighborEnterLeaveToActors(self):
-        
-        neighbors = {}
         
         for a, p in self.registeredActors.iteritems():
             
-            k = self.tileData.toTileIndex(p.location)
+            oldNeighbors = p.neighbors
+            p.neighbors = set()
             
-            if neighbors.has_key(k): continue
+            k = self.tileData.toTileIndex(p.location)
             
             for aa, pp in self.registeredActors.iteritems():
                 if a is aa: continue
@@ -185,10 +183,16 @@ class SWorld(SActor):
                 kk = self.tileData.toTileIndex(pp.location)
                 
                 if abs(k[0] - kk[0]) + abs(k[1] - kk[1]) <= 1:
-                    neighbors[k] = neighbors.get(k, []) + [aa]
+                    p.neighbors.add(aa)
+                    
+            newlyLeft = oldNeighbors - p.neighbors
+            newlyEntered = p.neighbors - oldNeighbors
+            
+            if newlyLeft:
+                a.send((self.channel, 'NEIGHBORS_LEFT', newlyLeft))
+            if newlyEntered:
+                a.send((self.channel, 'NEIGHBORS_ENTERED', newlyEntered))
         
-        self.debug('neighbors:%s' % neighbors)
-    
     
     def processOneTick(self, startTime):
         # The whole thing that happens during a tick!

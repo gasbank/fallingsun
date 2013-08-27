@@ -19,15 +19,20 @@ class NamedTasklet(stackless.tasklet):
     name = ""
 
     def __str__(self):
+        return self.__repr__()
+    def __repr__(self):
         assert(len(self.name) > 0)
-        return "<NamedTasklet(name='%s')>" % self.name
-
+        return "<Tasklet(%s) 0x%08X>" % (self.name, id(self))
+    
 class NamedChannel(stackless.channel):
     name = ''
     
     def __str__(self):
+        return self.__repr__()
+
+    def __repr__(self):
         assert(len(self.name) > 0)
-        return "<NamedChannel(name='%s')>" % self.name
+        return "<Channel(%s) 0x%08X>" % (self.name, id(self))
         
 class SActor(object):
     @property
@@ -41,7 +46,7 @@ class SActor(object):
     def __init__(self, instanceName='', display=None):
         self._instanceName = instanceName
         self._display = display
-        self._neighbors = []
+        self._neighbors = set()
         
         self.channel = NamedChannel()
         self.channel.name = self.getTaskletName() + 'Channel'
@@ -173,4 +178,5 @@ class ActorProperties:
         self.intention = ''
         self.staticSprite = staticSprite
         self.waitGauge = None
+        self.neighbors = set()
       

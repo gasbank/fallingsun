@@ -53,8 +53,16 @@ class SWoodcutter(SActor):
         self.world.send((self.channel, "UPDATE_MY_WAIT_GAUGE", self._waitGauge))
     
     @property
+    def stamina(self): return self._stamina
+    @stamina.setter
+    def stamina(self, value):
+        self._stamina = max(0, min(value, self.maxStamina))
+    @property
     def staminaFull(self):
         return self.stamina >= self.maxStamina
+    @property
+    def staminaDepleted(self):
+        return self.stamina <= 0
     
     @property
     def maxGatheringsReached(self):
@@ -68,9 +76,12 @@ class SWoodcutter(SActor):
         return self._hitpoints <= 0
     @hitpoints.setter    
     def hitpoints(self, value):
+        old = self._hitpoints
         self._hitpoints = value
-        self.world.send((self.channel, "UPDATE_MY_HP", self._hitpoints))
-    
+        if old != self._hitpoints: 
+            self.world.send((self.channel, "UPDATE_MY_HP", self._hitpoints))
+            self.drawFadeoutText('%s%+d' % ('HP', self._hitpoints - old))
+        
     def __init__(self, world, location=(0,0), angle=135, velocity=0,
                  hitpoints=10, homeLocation=None, instanceName="",
                  stamina=5, maxStamina=7, roamingRadius=100,
@@ -89,8 +100,9 @@ class SWoodcutter(SActor):
         self.harvestTargetProp = None
         self.gatherings = OrderedDict()
         self.lastHarvestTime = -1
-        self.stamina = stamina
         self.maxStamina = maxStamina
+        self._stamina = None
+        self.stamina = stamina
         self.roamingTarget = None
         self.lastRoamingTargetTime = None
         self.roamingRadius = roamingRadius
@@ -100,6 +112,7 @@ class SWoodcutter(SActor):
         self._waitGauge = None
         self.home = home
         self.maxGatherings = maxGatherings
+        self._starvationWaitGauge = None
         
         self.debug('Created.')
         
@@ -266,6 +279,10 @@ class SWoodcutter(SActor):
                 
                 self.waitGauge = None
                 
+
+    def drawFadeoutText(self, text):
+        self.sendDisplay((self.channel, 'DRAW_FADEOUT_TEXT', text, self.location))
+    
     def defaultMessageAction(self, args):
         sentFrom, msg, msgArgs = args[0], args[1], args[2:]
         
@@ -348,17 +365,25 @@ class SWoodcutter(SActor):
             #print self.angle
             self.world.send(updateMsg)
             
-            # 마지막에 깎지 
+            # 마지막에 깎자
             self.stamina -= self.deltaTime
             #self.world.send((self.channel, "UPDATE_MY_STAMINA", self.stamina))
             
-            # If stamina remains below the certain negative value,
+            # If stamina remains below the negative value,
             # the hitpoints will be decreased.
-            if self.stamina < -100:
-                self.hitpoints -= 1
-                if self.dead:
-                    self.deathReason = 'STARVATION'
-            
+            if self.staminaDepleted:
+                if self._starvationWaitGauge is None:
+                    self._starvationWaitGauge = 2000
+                else:
+                    self._starvationWaitGauge -= 1
+                    
+                if self._starvationWaitGauge <= 0:
+                    self.hitpoints -= 1
+                    self._starvationWaitGauge = None
+                    if self.dead:
+                        self.deathReason = 'STARVATION'
+            else:
+                self._starvationWaitGauge = None
             
         elif msg == "COLLISION":
             
@@ -378,18 +403,19 @@ class SWoodcutter(SActor):
             gathering = msgArgs[0]
             gatheringCount = msgArgs[1]
             self.gatherings[gathering] = self.gatherings.get(gathering, 0) + gatheringCount
-            self.sendDisplay((self.channel, 'DRAW_FADEOUT_TEXT', '%s+%d'
-                              % (gathering, gatheringCount), self.location))
-
+            self.drawFadeoutText('%s+%d' % (gathering, gatheringCount))
+            
         elif msg == "IDENTIFY_HARVEST_RESULT":
             #print self.channel, self.instanceName, "HARVESTED:", self.gatherings
             print self,self.intention
             msgArgs[0].append(self.gatherings)
         
         elif msg == "ADD_STAMINA":
+            old = self.stamina
             self.stamina += msgArgs[0]
-            if self.stamina > self.maxStamina:
-                self.stamina = self.maxStamina
+            if old != self.stamina:
+                print old, msgArgs[0], self.stamina, self.maxStamina
+                self.drawFadeoutText('%s+%d' % ('STAMINA', msgArgs[0]))
             
         elif msg == "CAN_STOCK_GATHERINGS":
             while self.gatherings:
@@ -401,5 +427,9 @@ class SWoodcutter(SActor):
             
         elif msg == 'YOU_ARE_DEAD':
             self.info('I am dead by %s.' % self.deathReason)
+        elif msg == 'NEIGHBORS_LEFT':
+            self._neighbors.difference_update(msgArgs[0])
+        elif msg == 'NEIGHBORS_ENTERED':
+            self._neighbors.update(msgArgs[0])
         else:
             raise RuntimeError('%s: Unknown message received - %s' % (self, msg))
