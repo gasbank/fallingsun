@@ -37,25 +37,17 @@ class FadeoutText(object):
         
 class SDisplayWindow(SActor):
     def __init__(self, world):
-        SActor.__init__(self, "DisplayWindow")
+        SActor.__init__(self, 'DisplayWindow')
         self.frame = 0
         self.world = world
         self.icons = {}
         self.time = 0
         
         pygame.init()
-        
+
+        self._fadeoutTexts = []
         self.font = pygame.font.Font('C:\windows\Fonts\GULIM.TTC', 10)
         self.bigFont = pygame.font.Font('C:\windows\Fonts\ARIALNBI.ttf', 12)
-        
-        pygame.display.set_mode((swidth, sheight))
-        pygame.display.set_caption("Falling Sun")
-        self.world.send((self.channel, "JOIN",
-                         ActorProperties(self.__class__.__name__,
-                                         public=False)))
-        
-        self._fadeoutTexts = []
-        
         self.dustRoadTile = pygame.image.load(os.path.join('data', '004-G_Ground02.png'))
         self.waterTile = pygame.image.load(os.path.join('data', '001-G_Water01.png'))
         self.grasslandTile = pygame.image.load(os.path.join('data', '001-Grassland01.png'))
@@ -63,7 +55,13 @@ class SDisplayWindow(SActor):
         self.thiefTile = pygame.image.load(os.path.join('data', '018-Thief03.png'))
         self.farmerTile = pygame.image.load(os.path.join('data', '143-Farmer01.png'))
         
-        self.info('Created.')
+        self.world.send((self.channel, "JOIN",
+                         ActorProperties(self.__class__.__name__,
+                                         public=False,
+                                         instanceName=self.instanceName)))
+        self.world.send((self.channel, "TELL_ME_WORLD_SIZE"))
+        
+        self.debug('Created.')
         
     def defaultMessageAction(self, args):
         _, msg, msgArgs = args[0], args[1], args[2:]
@@ -72,8 +70,18 @@ class SDisplayWindow(SActor):
         elif msg == 'DRAW_FADEOUT_TEXT':
             self._fadeoutTexts.append(FadeoutText(self.bigFont, msgArgs[0],
                                                   msgArgs[1]))
+        elif msg == 'WORLD_SIZE':
+            global swidth, sheight
+            swidth = (msgArgs[0] + 1) * 32
+            sheight = (msgArgs[1] + 1) * 32
+
+            pygame.display.set_mode((swidth, sheight))
+            pygame.display.set_caption("Falling Sun")
+            icon = pygame.image.load(os.path.join('data', 'fighter.ico')).convert_alpha()
+            pygame.display.set_icon(icon)
+            
         else:
-            raise RuntimeError('Unknown message')
+            raise RuntimeError('Unknown message: %s' % msg)
         
     def getIcon(self, iconName):
         if self.icons.has_key(iconName):
@@ -425,10 +433,23 @@ class SDisplayWindow(SActor):
                                          waitGaugeDrawHeight))
             nameplateLoc[1] += waitGaugeDrawHeight
     
+
+    def drawSightDebug(self, screen, actorProp):
+        pygame.draw.rect(screen, (255, 255, 255),
+                         pygame.Rect(actorProp.location[0] - 32*actorProp.sightRange,
+                                     actorProp.location[1] - 32*actorProp.sightRange,
+                                     32*(actorProp.sightRange*2+1),
+                                     32*(actorProp.sightRange*2+1)),
+                         1)
+    
+    
     def drawAllActors(self, screen, ws):
         
         for _, actorProp in sorted(ws.actors, key=lambda x: x[1].location[1]):
-            self.drawActor(screen, actorProp)
+            if actorProp.physical:
+                self.drawActor(screen, actorProp)
+            elif actorProp.name == 'SSight':
+                self.drawSightDebug(screen, actorProp)
     
     
     def drawFadeoutTexts(self, screen):
@@ -436,6 +457,13 @@ class SDisplayWindow(SActor):
             ft.draw(self.deltaTime)
     
         self._fadeoutTexts = [ft for ft in self._fadeoutTexts if not ft.dead]
+    
+
+    def drawGridDebug(self, screen):
+        for i in xrange(swidth//32):
+            pygame.draw.line(screen, (128,128,128), (32*i, 0), (32*i, sheight))
+        for i in xrange(sheight//32):
+            pygame.draw.line(screen, (128,128,128), (0, 32*i), (swidth, 32*i))
     
     def updateDisplay(self, msgArgs):
         
@@ -447,8 +475,8 @@ class SDisplayWindow(SActor):
                     (event.type == pygame.KEYDOWN
                      and event.key == pygame.K_ESCAPE))):
                 
-                self.info('--%s--> %s' % ('STOP_TICK_LOOP', self.world))
-                self.world.send((self.channel, "STOP_TICK_LOOP"))
+                self.info('--%s--> %s' % ('CLOSE_WINDOW', self.world))
+                self.world.send((self.channel, "CLOSE_WINDOW"))
                 
         screen = pygame.display.get_surface()
         background = pygame.Surface(screen.get_size())
@@ -462,6 +490,7 @@ class SDisplayWindow(SActor):
         
         
         self.drawTerrainTiles(screen, ws)
+        self.drawGridDebug(screen)
         self.drawCollisionTiles(screen, ws)
         #self.drawPathFindTest(screen, ws)
         self.drawGroundBuildingTiles(screen, ws)

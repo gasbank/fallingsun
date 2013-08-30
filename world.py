@@ -17,7 +17,8 @@ class WorldState:
         
 class SWorld(SActor):
     def __init__(self, spawnTreeInterval=0, exitOnNoHarvestables=False,
-                 disableCollisionCheck=False, useTestData=False):
+                 disableCollisionCheck=False, width=10, height=10,
+                 useTestData=False):
         
         SActor.__init__(self, 'World')
         
@@ -25,6 +26,7 @@ class SWorld(SActor):
         self.registeredActors = OrderedDict()
         self.aboutToBeKilledActors = OrderedDict()
         self.tickDisabledActors = OrderedDict()
+        self.sightActors = OrderedDict()
         
         # Tick
         self.maxUpdateRate = 30
@@ -34,7 +36,7 @@ class SWorld(SActor):
         self.tickOnlyOnce = False
 
         # Level
-        self.tileData = level.TileLevel(15, 15, useTestData=useTestData)
+        self.tileData = level.TileLevel(width, height, useTestData=useTestData)
         
         self.showHarvestResult = False
         self.spawnTreeInterval = spawnTreeInterval
@@ -171,6 +173,7 @@ class SWorld(SActor):
     def sendNeighborEnterLeaveToActors(self):
         
         for a, p in self.registeredActors.iteritems():
+            if not p.public: continue
             
             oldNeighbors = p.neighbors
             p.neighbors = set()
@@ -182,7 +185,13 @@ class SWorld(SActor):
                 
                 kk = self.tileData.toTileIndex(pp.location)
                 
-                if abs(k[0] - kk[0]) + abs(k[1] - kk[1]) <= 1:
+                isNeighbor = None
+                if p.name is 'SSight':
+                    isNeighbor = (abs(k[0] - kk[0]) <= p.sightRange) and (abs(k[1] - kk[1]) <= p.sightRange) 
+                else:
+                    isNeighbor = abs(k[0] - kk[0]) + abs(k[1] - kk[1]) <= 1
+                
+                if isNeighbor:
                     p.neighbors.add(aa)
                     
             newlyLeft = oldNeighbors - p.neighbors
@@ -253,6 +262,9 @@ class SWorld(SActor):
                     self.tileData.placeTent(int(msgArgs[0].location[0]//32),
                                             int(msgArgs[0].location[1]//32))
             
+            if msgArgs[0].name == 'SSight':
+                self.sightActors[sentFrom] = msgArgs[0]
+            
             self.info('%s joined the world.' % msgArgs[0].instanceName)
             
         elif msg == 'UPDATE_VECTOR':
@@ -283,8 +295,18 @@ class SWorld(SActor):
             self.startTickTasklet(tickOnlyOnce=True)
         elif msg == 'STOP_TICK_LOOP':
             self.tickLoopEnable = False
+        elif msg == 'CLOSE_WINDOW':
+            self.tickLoopEnable = False
+            for a,p in self.registeredActors.iteritems():
+                if p.name == 'SServer':
+                    a.send((self.channel, 'CLOSE_LISTENING_SOCKET'))            
         elif msg == 'NO_MORE_TICK_EVENT':
             self.registeredActors[sentFrom].tickEvent = False
+        elif msg == 'TELL_ME_WORLD_SIZE':
+            sentFrom.send((self.channel, "WORLD_SIZE", self.tileData.width,
+                                                       self.tileData.height))
+        elif msg == 'SIGHT_RANGE':
+            self.registeredActors[sentFrom].sightRange = msgArgs[0]
         else:
             raise RuntimeError("ERROR: The world got unknown message %s sent from %s"
                                % (msg, sentFrom));

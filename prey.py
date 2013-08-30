@@ -36,12 +36,12 @@ class SPrey(SActor):
 
         self.changeIntention(intention)
         
-        logging.info('A prey [%s] created.' % self.instanceName)
+        self.debug('Created.')
         
     def changeIntention(self, intention):
         
         if intention == 'ROAMING':
-            self.velocity = 10
+            self.velocity = 5
         elif intention == 'RESTING':
             self.velocity = 0
             self.restFor = 6 + random.random() * 6

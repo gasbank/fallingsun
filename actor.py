@@ -16,8 +16,9 @@ def printAllActorChannelBalances():
         print t, t.alive, t.paused, t.blocked, t.scheduled, t.restorable
 
 class NamedTasklet(stackless.tasklet):
-    name = ""
-
+    def __init__(self, name=''):
+        stackless.tasklet.__init__(self)
+        self.name = name
     def __str__(self):
         return self.__repr__()
     def __repr__(self):
@@ -160,7 +161,7 @@ class ActorProperties:
     def __init__(self, name, location=(-1,-1), angle=0, velocity=0, height=-1,
                  width=-1, hitpoints=1, public=True, harvestable=False,
                  physical=True, animatedSprite=False, instanceName='',
-                 tickEvent=True, staticSprite=False):
+                 tickEvent=True, staticSprite=False, sightRange=0):
         
         self.name = name
         self.location = location
@@ -179,4 +180,4 @@ class ActorProperties:
         self.staticSprite = staticSprite
         self.waitGauge = None
         self.neighbors = set()
-      
+        self.sightRange = sightRange
