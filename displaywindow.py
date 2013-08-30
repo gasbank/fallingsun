@@ -3,8 +3,8 @@ from actor import SActor, ActorProperties
 import pygame
 import os
 
-swidth = 700
-sheight = 700
+swidth = 800
+sheight = 800
 
 class FadeoutText(object):
     def __init__(self, font, text, location, maxAge=5.0, color=(0,0,0),

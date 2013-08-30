@@ -386,18 +386,7 @@ class SWoodcutter(SActor):
                 self._starvationWaitGauge = None
             
         elif msg == "COLLISION":
-            
-            if self.channel is msgArgs[0]:
-                target = msgArgs[1]
-                targetProp = msgArgs[1+2]
-            elif self.channel is msgArgs[1]:
-                raise RuntimeError("Collision argument error")
-                #target = msgArgs[0]
-                #targetProp = msgArgs[0+2]
-            else:
-                raise RuntimeError("What happened?")
-            
-            self.debug('Collision with %s' % targetProp.name)
+            pass
 
         elif msg == "ACQUIRE":
             gathering = msgArgs[0]
@@ -414,7 +403,6 @@ class SWoodcutter(SActor):
             old = self.stamina
             self.stamina += msgArgs[0]
             if old != self.stamina:
-                print old, msgArgs[0], self.stamina, self.maxStamina
                 self.drawFadeoutText('%s+%d' % ('STAMINA', msgArgs[0]))
             
         elif msg == "CAN_STOCK_GATHERINGS":
