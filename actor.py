@@ -152,6 +152,9 @@ class SActor(object):
         
     def debug(self, msg):
         logging.debug('%s:%s' % (self.instanceName, msg))
+    
+    def warn(self, msg):
+        logging.warn('%s:%s' % (self.instanceName, msg))
         
     def sendDisplay(self, msg):
         if self._display:
@@ -161,7 +164,8 @@ class ActorProperties:
     def __init__(self, name, location=(-1,-1), angle=0, velocity=0, height=-1,
                  width=-1, hitpoints=1, public=True, harvestable=False,
                  physical=True, animatedSprite=False, instanceName='',
-                 tickEvent=True, staticSprite=False, sightRange=0):
+                 tickEvent=True, staticSprite=False, sightRange=0,
+                 blankType=None, waitGauge=None):
         
         self.name = name
         self.location = location
@@ -178,6 +182,8 @@ class ActorProperties:
         self.tickEvent = tickEvent
         self.intention = ''
         self.staticSprite = staticSprite
-        self.waitGauge = None
+        self.waitGauge = waitGauge
         self.neighbors = set()
+        self.neighbored = set()
         self.sightRange = sightRange
+        self.blankType = blankType

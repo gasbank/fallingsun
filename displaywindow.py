@@ -36,7 +36,7 @@ class FadeoutText(object):
     
         
 class SDisplayWindow(SActor):
-    def __init__(self, world):
+    def __init__(self, world, windowTitle='Falling Sun'):
         SActor.__init__(self, 'DisplayWindow')
         self.frame = 0
         self.world = world
@@ -44,7 +44,8 @@ class SDisplayWindow(SActor):
         self.time = 0
         
         pygame.init()
-
+        pygame.display.set_caption(windowTitle)
+        
         self._fadeoutTexts = []
         self.font = pygame.font.Font('C:\windows\Fonts\GULIM.TTC', 10)
         self.bigFont = pygame.font.Font('C:\windows\Fonts\ARIALNBI.ttf', 12)
@@ -76,7 +77,6 @@ class SDisplayWindow(SActor):
             sheight = (msgArgs[1] + 1) * 32
 
             pygame.display.set_mode((swidth, sheight))
-            pygame.display.set_caption("Falling Sun")
             icon = pygame.image.load(os.path.join('data', 'fighter.ico')).convert_alpha()
             pygame.display.set_icon(icon)
             
@@ -370,12 +370,15 @@ class SDisplayWindow(SActor):
         
     def drawActor(self, screen, actorProp):
         
+        actorImageMap = {'SPrey': self.fighterTile,
+                         'SWoodcutter': self.farmerTile}
+        
         if actorProp.animatedSprite:
             
-            if actorProp.name == 'SPrey':
-                itemImage = self.fighterTile
-            elif actorProp.name == 'SWoodcutter':
-                itemImage = self.farmerTile
+            if actorProp.name in ['SPrey', 'SWoodcutter']:
+                itemImage = actorImageMap[actorProp.name]
+            elif actorProp.name == 'SBlank':
+                itemImage = actorImageMap[actorProp.blankType] 
             else:
                 raise RuntimeError('Not available for the moment.')
             

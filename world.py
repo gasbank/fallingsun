@@ -75,6 +75,7 @@ class SWorld(SActor):
                                             int(self.registeredActors[actor].location[1]//32),
                                             False)
             
+            self.info('%s about to be destroyed.' % self.registeredActors[actor].instanceName)
             del self.registeredActors[actor]
         
         self.aboutToBeKilledActors.clear()
@@ -175,6 +176,11 @@ class SWorld(SActor):
         for a, p in self.registeredActors.iteritems():
             if not p.public: continue
             
+            p.neighbored.clear()
+        
+        for a, p in self.registeredActors.iteritems():
+            if not p.public: continue
+            
             oldNeighbors = p.neighbors
             p.neighbors = set()
             
@@ -192,7 +198,8 @@ class SWorld(SActor):
                     isNeighbor = abs(k[0] - kk[0]) + abs(k[1] - kk[1]) <= 1
                 
                 if isNeighbor:
-                    p.neighbors.add(aa)
+                    p.neighbors.add((aa,pp))
+                    pp.neighbored.add((a,p))
                     
             newlyLeft = oldNeighbors - p.neighbors
             newlyEntered = p.neighbors - oldNeighbors
@@ -268,8 +275,18 @@ class SWorld(SActor):
             self.info('%s joined the world.' % msgArgs[0].instanceName)
             
         elif msg == 'UPDATE_VECTOR':
-            self.registeredActors[sentFrom].angle = msgArgs[0]
-            self.registeredActors[sentFrom].velocity = msgArgs[1]
+            oldAngle = self.registeredActors[sentFrom].angle
+            oldVelocity = self.registeredActors[sentFrom].velocity
+            
+            if abs(oldAngle - msgArgs[0]) > 0.05 or abs(oldVelocity - msgArgs[1]) > 0.05: 
+                self.registeredActors[sentFrom].angle = msgArgs[0]
+                self.registeredActors[sentFrom].velocity = msgArgs[1]
+                
+                for a,p in self.registeredActors[sentFrom].neighbored:
+                    if p.name == 'SSight':
+                        a.send((self.channel, 'UPDATE_VECTOR_OF_NEIGHBORS',
+                                (sentFrom,self.registeredActors[sentFrom])))
+             
         elif msg == 'UPDATE_HARVESTABLE':
             self.registeredActors[sentFrom].harvestable = msgArgs[0]                
         elif msg == 'UPDATE_INTENTION':
@@ -298,8 +315,8 @@ class SWorld(SActor):
         elif msg == 'CLOSE_WINDOW':
             self.tickLoopEnable = False
             for a,p in self.registeredActors.iteritems():
-                if p.name == 'SServer':
-                    a.send((self.channel, 'CLOSE_LISTENING_SOCKET'))            
+                if p.name in ['SServer', 'SClient']:
+                    a.send((self.channel, 'CLOSE_SOCKET'))
         elif msg == 'NO_MORE_TICK_EVENT':
             self.registeredActors[sentFrom].tickEvent = False
         elif msg == 'TELL_ME_WORLD_SIZE':

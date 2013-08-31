@@ -4,8 +4,8 @@ import logging
 from world import SWorld
 from displaywindow import SDisplayWindow
 from prey import SPrey
-from sight import SSight
 from server import SServer
+
 def main():
     random.seed(1)
     
@@ -14,14 +14,27 @@ def main():
     worldActor = SWorld(width=10, height=10)
     world = worldActor.channel
     
-    SDisplayWindow(world)
+    SDisplayWindow(world, windowTitle='Falling Sun Server')
 
     SPrey(world, location=(32 * 0 + 16, 32 * 0 + 16), velocity=20,
           angle=90, instanceName='Prey', stamina=100, maxStamina=100,
           intention='ROAMING')
     
-    SSight(world, location=(32 * 5, 32* 5), instanceName='Sight',
-           sightRange=2)
+    SPrey(world, location=(32 * 3 + 16, 32 * 7 + 16), velocity=20,
+          angle=90, instanceName='Prey', stamina=100, maxStamina=100,
+          intention='ROAMING')
+    
+    SPrey(world, location=(32 * 3 + 16, 32 * 7 + 16), velocity=20,
+          angle=90, instanceName='Prey', stamina=100, maxStamina=100,
+          intention='ROAMING')
+    
+    SPrey(world, location=(32 * 3 + 16, 32 * 7 + 16), velocity=20,
+          angle=90, instanceName='Prey', stamina=100, maxStamina=100,
+          intention='ROAMING')
+    
+    SPrey(world, location=(32 * 3 + 16, 32 * 7 + 16), velocity=20,
+          angle=90, instanceName='Prey', stamina=100, maxStamina=100,
+          intention='ROAMING')
     
     SServer(world, 'Server')
         
