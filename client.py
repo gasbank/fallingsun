@@ -42,16 +42,25 @@ class SClient(SActor):
                 f = self.socket.makefile('rb', 512)
                 cmd, cmdArgs = cPickle.load(f)
                 f.close()
-                self.processMessageMethod((self.socket, cmd, cmdArgs))
             except socket.error:
+                self.info('socket.error exception detected.')
                 break
             
+            self.processMessageMethod((self.socket, cmd, cmdArgs))
+            
+
+    def despawnAllBlankActors(self):
+        while self.blankActors:
+            _, a = self.blankActors.popitem()
+            a.channel.send((self.channel, 'KILL_YOURSELF'))
+    
     def defaultMessageAction(self, args):
         sentFrom, msg, msgArgs = args[0], args[1], args[2:]
         if msg == 'WORLD_STATE':
             pass
         elif msg == 'CLOSE_SOCKET':
-            self.socket.send('bye\r\n')
+            self.info('CLOSE_SOCKET detected.')
+            self.despawnAllBlankActors()
             self.socket.close()
         elif msg == 'SPAWN':
             for actorId, actorType, location, angle, velocity in msgArgs[0]:

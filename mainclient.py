@@ -4,7 +4,6 @@ import logging
 from world import SWorld
 from displaywindow import SDisplayWindow
 from client import SClient
-#from blank import SBlank
 
 def main():
     random.seed(1)
@@ -17,8 +16,6 @@ def main():
     SDisplayWindow(world, windowTitle='Falling Sun Client')
 
     SClient(world, 'Client', ('127.0.0.1', 3000))
-    
-    #SBlank(world, 'SPrey', (32*5,32*5), 'TestBlank')
         
     logging.info('All actors initialized successfully.')
     logging.info('Starting the tick tasklet...')

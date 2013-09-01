@@ -108,7 +108,7 @@ class SUser(SActor):
         sentFrom, msg, msgArgs = args[0], args[1], args[2:]
         if msg == 'WORLD_STATE':
             pass
-        elif msg == 'SPAWN':
+        elif msg == 'SPAWN' and self.connection:
             actors = []
             for na, np in msgArgs[0]:
                 p = (id(na), np.name, np.location, np.angle, np.velocity)
@@ -116,19 +116,25 @@ class SUser(SActor):
             f = self.connection.clientSocket.makefile('wb', 512)
             cPickle.dump(('SPAWN', actors), f, cPickle.HIGHEST_PROTOCOL)
             f.close()
-        elif msg == 'DESPAWN':
+        elif msg == 'DESPAWN' and self.connection:
             actors = []
             for na, np in msgArgs[0]:
                 actors.append((id(na),))
             f = self.connection.clientSocket.makefile('wb', 512)
             cPickle.dump(('DESPAWN', actors), f, cPickle.HIGHEST_PROTOCOL)
             f.close()
-        elif msg == 'UPDATE_VECTOR':
+        elif msg == 'UPDATE_VECTOR' and self.connection:
             f = self.connection.clientSocket.makefile('wb', 512)
             cPickle.dump(('UPDATE_VECTOR', (id(msgArgs[0]),
                           msgArgs[1].location, msgArgs[1].angle,
                           msgArgs[1].velocity)), f, cPickle.HIGHEST_PROTOCOL)
             f.close()
+        elif msg == 'CLOSE_SOCKET':
+            if self.connection:
+                f = self.connection.clientSocket.makefile('wb', 512)
+                cPickle.dump((msg, None), f, cPickle.HIGHEST_PROTOCOL)
+                f.close()
+                
         else:
-            raise RuntimeError("ERROR: Unknown message %s sent from %s"
+            raise RuntimeError("ERROR: Unknown/invalid message %s sent from %s"
                                % (msg, sentFrom));

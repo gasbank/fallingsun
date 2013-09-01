@@ -113,6 +113,8 @@ class SServer(SActor):
             pass
         elif msg == 'CLOSE_SOCKET':
             self.listenSocket._sock.close()
+            for _, u in self.userIndex.iteritems():
+                u.channel.send((self.channel, msg))
         else:
             raise RuntimeError("ERROR: Unknown message %s sent from %s"
                                % (msg, sentFrom));
