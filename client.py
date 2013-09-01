@@ -52,15 +52,21 @@ class SClient(SActor):
     def despawnAllBlankActors(self):
         while self.blankActors:
             _, a = self.blankActors.popitem()
-            a.channel.send((self.channel, 'KILL_YOURSELF'))
+            #a.channel.send((self.channel, 'KILL_YOURSELF'))
+            self.world.send((a.channel, 'KILLME'))
     
     def defaultMessageAction(self, args):
         sentFrom, msg, msgArgs = args[0], args[1], args[2:]
         if msg == 'WORLD_STATE':
             pass
         elif msg == 'CLOSE_SOCKET':
-            self.info('CLOSE_SOCKET detected.')
-            self.despawnAllBlankActors()
+            self.info('CLOSE_SOCKET from %s' % sentFrom)
+
+            # Cleanup all blank actors if server-side closing
+            # of the socket happens. 
+            if sentFrom is self.socket:
+                self.despawnAllBlankActors()
+                
             self.socket.close()
         elif msg == 'SPAWN':
             for actorId, actorType, location, angle, velocity in msgArgs[0]:
