@@ -470,6 +470,33 @@ class SDisplayWindow(SActor):
             pygame.draw.line(screen, (128,128,128), (32*i, 0), (32*i, sheight))
         for i in xrange(sheight//32):
             pygame.draw.line(screen, (128,128,128), (0, 32*i), (swidth, 32*i))
+            
+    
+    def handleMoveKeyEvent(self, event):
+        if event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_RIGHT:
+                self._client.send((self.channel, 'MOVE_PAWN', 'E', True))
+        if event.type == pygame.KEYUP:
+            if event.key == pygame.K_RIGHT:
+                self._client.send((self.channel, 'MOVE_PAWN', 'E', False))
+        if event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_LEFT:
+                self._client.send((self.channel, 'MOVE_PAWN', 'W', True))
+        if event.type == pygame.KEYUP:
+            if event.key == pygame.K_LEFT:
+                self._client.send((self.channel, 'MOVE_PAWN', 'W', False))
+        if event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_UP:
+                self._client.send((self.channel, 'MOVE_PAWN', 'N', True))
+        if event.type == pygame.KEYUP:
+            if event.key == pygame.K_UP:
+                self._client.send((self.channel, 'MOVE_PAWN', 'N', False))
+        if event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_DOWN:
+                self._client.send((self.channel, 'MOVE_PAWN', 'S', True))
+        if event.type == pygame.KEYUP:
+            if event.key == pygame.K_DOWN:
+                self._client.send((self.channel, 'MOVE_PAWN', 'S', False))
     
     def updateDisplay(self, msgArgs):
         
@@ -483,31 +510,9 @@ class SDisplayWindow(SActor):
                 
                 self.info('--%s--> %s' % ('CLOSE_WINDOW', self.world))
                 self.world.send((self.channel, "CLOSE_WINDOW"))
-                
-            if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_RIGHT:
-                    self._client.send((self.channel, 'MOVE_PAWN', 'E', True))
-            if event.type == pygame.KEYUP:
-                if event.key == pygame.K_RIGHT:
-                    self._client.send((self.channel, 'MOVE_PAWN', 'E', False))
-            if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_LEFT:
-                    self._client.send((self.channel, 'MOVE_PAWN', 'W', True))
-            if event.type == pygame.KEYUP:
-                if event.key == pygame.K_LEFT:
-                    self._client.send((self.channel, 'MOVE_PAWN', 'W', False))
-            if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_UP:
-                    self._client.send((self.channel, 'MOVE_PAWN', 'N', True))
-            if event.type == pygame.KEYUP:
-                if event.key == pygame.K_UP:
-                    self._client.send((self.channel, 'MOVE_PAWN', 'N', False))
-            if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_DOWN:
-                    self._client.send((self.channel, 'MOVE_PAWN', 'S', True))
-            if event.type == pygame.KEYUP:
-                if event.key == pygame.K_DOWN:
-                    self._client.send((self.channel, 'MOVE_PAWN', 'S', False))
+            
+            if self._client:
+                self.handleMoveKeyEvent(event)
                 
         screen = pygame.display.get_surface()
         background = pygame.Surface(screen.get_size())

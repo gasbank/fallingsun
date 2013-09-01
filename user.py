@@ -1,14 +1,14 @@
-from actor import SActor, ActorProperties, NamedTasklet, UnknownMessageError, UnauthorizedAccessError
+from actor import ActorProperties, NamedTasklet, UnknownMessageError, UnauthorizedAccessError
+from netactor import SNetActor
 from prey import SPrey
 from sight import SSight
 import server
-import cPickle
 import socket
 
-class SUser(SActor):
+class SUser(SNetActor):
     
     def __init__(self, world, instanceName, connection):
-        SActor.__init__(self, instanceName)
+        SNetActor.__init__(self, instanceName)
         self.world = world
         self.connection = connection
         
@@ -26,22 +26,23 @@ class SUser(SActor):
                           velocity=0, angle=90,
                           instanceName=self.instanceName+'Pawn', stamina=100,
                           maxStamina=100, intention='SYNCING').channel
-                          
-        f = self.connection.clientSocket.makefile('wb', 512)
-        cPickle.dump(('OWNERSHIP', id(self.pawn)), f,
-                     cPickle.HIGHEST_PROTOCOL)
-        f.close()
-
+        
+        self.sendPacket(('OWNERSHIP', id(self.pawn)))
+                        
         # The tasklet will hold a reference to the user keeping the instance
         # alive as long as it is handling commands.
         NamedTasklet(self.Run)()
+        
+    def getSocket(self):
+        return self.connection.clientSocket
 
     def Run(self):
         serverActor = self.connection.serverActor
 
         # Notify the server that a user is connected.
         serverActor.RegisterUser(self)
-        self.info("Connected %d from %s" % (id(self), self.connection.clientAddress))
+        self.info("Connected %d from %s" % (id(self),
+                                            self.connection.clientAddress))
 
         try:
             while self.HandleCommand():
@@ -49,14 +50,8 @@ class SUser(SActor):
 
             self.OnUserDisconnection()
         except server.RemoteDisconnectionError:
-            #print 'remotedisconnectionerror caught'
             self.OnRemoteDisconnection()
-            #print 'before set connection to None'
             self.connection = None
-            #print 'after set connection to None'
-            '''except:
-            print 'WTF...'
-            traceback.print_exc()'''
         finally:
             if self.connection:
                 self.connection.Disconnect()
@@ -64,9 +59,7 @@ class SUser(SActor):
             
     def HandleCommand(self):
         try:
-            f = self.connection.clientSocket.makefile('rb', 512)
-            cmd, cmdArgs = cPickle.load(f)
-            f.close()
+            cmd, cmdArgs = self.recvPacket()
         except socket.error:
             raise server.RemoteDisconnectionError
         except EOFError:
@@ -88,7 +81,7 @@ class SUser(SActor):
         self.world.send_sequence([(self.sight, 'KILLME'),
                                   (self.pawn, 'KILLME')])
         self.info("Disconnected %d (local)" % id(self))
-                
+        
     def defaultMessageAction(self, args):
         sentFrom, msg, msgArgs = args[0], args[1], args[2:]
         if msg == 'WORLD_STATE':
@@ -103,9 +96,9 @@ class SUser(SActor):
                 #name = np.name  
                 p = (id(na), name, np.location, np.angle, np.velocity)
                 actors.append(p)
-            f = self.connection.clientSocket.makefile('wb', 512)
-            cPickle.dump(('SPAWN', actors), f, cPickle.HIGHEST_PROTOCOL)
-            f.close()
+                
+            self.sendPacket(('SPAWN', actors))
+
         elif msg == 'SEND_DESPAWN':
             if not self.connection:
                 return
@@ -113,18 +106,18 @@ class SUser(SActor):
             actors = []
             for na, np in msgArgs[0]:
                 actors.append((id(na),))
-            f = self.connection.clientSocket.makefile('wb', 512)
-            cPickle.dump(('DESPAWN', actors), f, cPickle.HIGHEST_PROTOCOL)
-            f.close()
+                
+            self.sendPacket(('DESPAWN', actors))
+
         elif msg == 'SEND_UPDATE_VECTOR':
             if not self.connection:
                 return
             
-            f = self.connection.clientSocket.makefile('wb', 512)
-            cPickle.dump(('UPDATE_VECTOR', (id(msgArgs[0]),
-                          msgArgs[1].location, msgArgs[1].angle,
-                          msgArgs[1].velocity)), f, cPickle.HIGHEST_PROTOCOL)
-            f.close()
+            self.sendPacket(('UPDATE_VECTOR', (id(msgArgs[0]),
+                                               msgArgs[1].location,
+                                               msgArgs[1].angle,
+                                               msgArgs[1].velocity)))
+
         elif msg == 'UPDATE_VECTOR':
             actorId, (angle, velocity) = msgArgs[0]
             
@@ -136,9 +129,7 @@ class SUser(SActor):
                 
         elif msg == 'CLOSE_SOCKET':
             if self.connection:
-                f = self.connection.clientSocket.makefile('wb', 512)
-                cPickle.dump((msg, None), f, cPickle.HIGHEST_PROTOCOL)
-                f.close()
+                self.sendPacket((msg, None))
                 
         else:
             raise UnknownMessageError(msg, sentFrom);

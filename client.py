@@ -1,16 +1,17 @@
-from actor import SActor, ActorProperties, NamedTasklet, UnknownMessageError
+from actor import ActorProperties, NamedTasklet, UnknownMessageError
+from netactor import SNetActor
 from blank import SBlank
 from socket import AF_INET, SOCK_STREAM
 from stacklesssocket import stdsocket as socket, install, uninstall
-import cPickle
 
-class SClient(SActor):
+class SClient(SNetActor):
     def __init__(self, world, instanceName, serverAddress):
-        SActor.__init__(self, instanceName)
+        SNetActor.__init__(self, instanceName)
         self.world = world
         self.serverAddress = serverAddress
         self.blankActors = {}
         self.ownedActorId = None
+        self.socket = None
         
         NamedTasklet(self.startClientLoop)()
         
@@ -18,6 +19,9 @@ class SClient(SActor):
                          ActorProperties(self.__class__.__name__,
                                          instanceName=self.instanceName,
                                          physical=False, public=False)))
+
+    def getSocket(self):
+        return self.socket
 
     def startClientLoop(self):
 
@@ -40,9 +44,7 @@ class SClient(SActor):
             
         while 1:
             try:
-                f = self.socket.makefile('rb', 512)
-                cmd, cmdArgs = cPickle.load(f)
-                f.close()
+                cmd, cmdArgs = self.recvPacket()
             except socket.error:
                 self.info('socket.error exception detected.')
                 break
@@ -99,9 +101,7 @@ class SClient(SActor):
             velocity = 2 if pressed else 0
             
             if self.ownedActorId:
-                f = self.socket.makefile('wb', 512)
-                cPickle.dump(('UPDATE_VECTOR', (self.ownedActorId,
-                              (angle, velocity))), f, cPickle.HIGHEST_PROTOCOL)
-                f.close()
+                self.sendPacket(('UPDATE_VECTOR', (self.ownedActorId,
+                                                   (angle, velocity))))
         else:
             raise UnknownMessageError(msg, sentFrom);
