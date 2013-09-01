@@ -30,6 +30,7 @@ class SPrey(SActor):
         SActor.__init__(self, instanceName)
         self._angle = self._angleDirty = None
         self._velocity = self._velocityDirty = None
+        self.intention = None
         
         self.time = 0
         self.deltaTime = 0
@@ -135,6 +136,8 @@ class SPrey(SActor):
                     self.changeIntention('ROAMING')
                 
             elif self.intention == 'SYNCING':
+                pass
+            elif self.intention is None:
                 pass
             else:
                 raise RuntimeError('Unknown intention: %s' % self.intention)

@@ -69,14 +69,15 @@ class SHome(SActor):
         elif msg == 'NEIGHBORS_LEFT':
             self._neighbors.difference_update(msgArgs[0])
             self.debug('Left:%s'%msgArgs[0])
-            for newlyLeft in msgArgs[0]:
+            for newlyLeft, _ in msgArgs[0]:
                 cname = str(newlyLeft)+':AddStamina'
                 self.tasklets[cname].send_exception(TaskletExit)
                 del self.tasklets[cname]
+                
         elif msg == 'NEIGHBORS_ENTERED':
             self._neighbors.update(msgArgs[0])
             self.debug('Entered:%s'%msgArgs[0])
-            for newlyEntered in msgArgs[0]:
+            for newlyEntered, _ in msgArgs[0]:
                 c = NamedChannel()
                 c.name = str(newlyEntered)+':AddStamina'
                 self.tasklets[c.name] = c

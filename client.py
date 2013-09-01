@@ -103,5 +103,7 @@ class SClient(SNetActor):
             if self.ownedActorId:
                 self.sendPacket(('UPDATE_VECTOR', (self.ownedActorId,
                                                    (angle, velocity))))
+        elif msg == None:
+            pass
         else:
             raise UnknownMessageError(msg, sentFrom);

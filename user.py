@@ -11,11 +11,8 @@ class SUser(SNetActor):
         SNetActor.__init__(self, instanceName)
         self.world = world
         self.connection = connection
-        
-        self.world.send((self.channel, "JOIN",
-                         ActorProperties(self.__class__.__name__,
-                                         instanceName=self.instanceName,
-                                         physical=False, public=False)))
+        self.sight = None
+        self.pawn = None
         
         sightX, sightY = 5, 5
         self.sight = SSight(world, location=(32 * sightX, 32* sightY),
@@ -26,6 +23,11 @@ class SUser(SNetActor):
                           velocity=0, angle=90,
                           instanceName=self.instanceName+'Pawn', stamina=100,
                           maxStamina=100, intention='SYNCING').channel
+        
+        self.world.send((self.channel, "JOIN",
+                         ActorProperties(self.__class__.__name__,
+                                         instanceName=self.instanceName,
+                                         physical=False, public=False)))
         
         self.sendPacket(('OWNERSHIP', id(self.pawn)))
                         
@@ -74,12 +76,14 @@ class SUser(SNetActor):
 
     def OnRemoteDisconnection(self):
         self.world.send_sequence([(self.sight, 'KILLME'),
-                                  (self.pawn, 'KILLME')])
+                                  (self.pawn, 'KILLME'),
+                                  (self.channel, 'KILLME')])
         self.info("Disconnected %d (remote)" % id(self))
 
     def OnUserDisconnection(self):
         self.world.send_sequence([(self.sight, 'KILLME'),
-                                  (self.pawn, 'KILLME')])
+                                  (self.pawn, 'KILLME'),
+                                  (self.channel, 'KILLME')])
         self.info("Disconnected %d (local)" % id(self))
         
     def defaultMessageAction(self, args):
@@ -92,9 +96,12 @@ class SUser(SNetActor):
             
             actors = []
             for na, np in msgArgs[0]:
-                name = 'SHeadman' if na is self.pawn else np.name
+                if na() is None or np() is None:
+                    continue
+                
+                name = 'SHeadman' if na() is self.pawn else np().name
                 #name = np.name  
-                p = (id(na), name, np.location, np.angle, np.velocity)
+                p = (id(na()), name, np().location, np().angle, np().velocity)
                 actors.append(p)
                 
             self.sendPacket(('SPAWN', actors))
@@ -105,7 +112,7 @@ class SUser(SNetActor):
             
             actors = []
             for na, np in msgArgs[0]:
-                actors.append((id(na),))
+                actors.append((id(na()),))
                 
             self.sendPacket(('DESPAWN', actors))
 
@@ -130,6 +137,7 @@ class SUser(SNetActor):
         elif msg == 'CLOSE_SOCKET':
             if self.connection:
                 self.sendPacket((msg, None))
-                
+        elif msg == 'YOU_ARE_DEAD':
+            pass
         else:
             raise UnknownMessageError(msg, sentFrom);

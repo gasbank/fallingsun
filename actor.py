@@ -2,6 +2,7 @@ import stackless  # @UnresolvedImport
 import random
 import math
 import logging
+import weakref
 
 gTasklets = []
 gChannels = []
@@ -63,14 +64,14 @@ class SActor(object):
         self.channel.name = self.getTaskletName() + 'Channel'
         
         global gChannels
-        gChannels.append(self.channel)
+        gChannels.append(weakref.ref(self.channel))
         
         self.processMessageMethod = self.defaultMessageAction
         t = NamedTasklet(self.processMessage)()
         t.name = self.getTaskletName()
         
         global gTasklets
-        gTasklets.append(t)
+        gTasklets.append(weakref.ref(t))
         
     def getTaskletName(self):
         return self.instanceName

@@ -6,6 +6,7 @@ from tree import STree
 import random
 from home import SHome
 import level
+import weakref
 
 class WorldState:
     def __init__(self, updateRate, time, tileData):
@@ -145,7 +146,7 @@ class SWorld(SActor):
                 ws.actors.append((actor, self.registeredActors[actor]))
                 
         for actor in self.registeredActors:
-            #print self.channel, "--WORLD_STATE-->", actor
+            self.debug('%s --WORLD_STATE--> %s' % (self.channel, actor))
             actor.send((self.channel, "WORLD_STATE", ws))
 
     def checkForGatherings(self):
@@ -202,8 +203,8 @@ class SWorld(SActor):
                     isNeighbor = abs(k[0] - kk[0]) + abs(k[1] - kk[1]) <= 1
                 
                 if isNeighbor:
-                    p.neighbors.add((aa,pp))
-                    pp.neighbored.add((a,p))
+                    p.neighbors.add((weakref.ref(aa), weakref.ref(pp)))
+                    pp.neighbored.add((weakref.ref(a), weakref.ref(p)))
                     
             newlyLeft = oldNeighbors - p.neighbors
             newlyEntered = p.neighbors - oldNeighbors
@@ -238,7 +239,7 @@ class SWorld(SActor):
 
         if not self.registeredActors and not self.aboutToBeKilledActors and not self.tickDisabledActors:
             self.tickLoopEnable = False
-        
+            
     def tickLoop(self):
         startTime = 0 #time.clock()
         while self.tickLoopEnable:
@@ -272,10 +273,11 @@ class SWorld(SActor):
                     
                     self.tileData.placeTent(int(msgArgs[0].location[0]//32),
                                             int(msgArgs[0].location[1]//32))
-            
+            '''
             if msgArgs[0].name == 'SSight':
                 self.sightActors[sentFrom] = msgArgs[0]
-                
+            '''
+            
             if msgArgs[0].name == 'SClient':
                 if self._client:
                     raise RuntimeError('Second SClient try to join.')
@@ -297,9 +299,9 @@ class SWorld(SActor):
                 self.registeredActors[sentFrom].velocity = msgArgs[1]
                 
                 for a,p in self.registeredActors[sentFrom].neighbored:
-                    if p.name == 'SSight':
-                        a.send((self.channel, 'UPDATE_VECTOR_OF_NEIGHBORS',
-                                (sentFrom,self.registeredActors[sentFrom])))
+                    if a() and p() and p().name == 'SSight':
+                        a().send((self.channel, 'UPDATE_VECTOR_OF_NEIGHBORS',
+                                (sentFrom, self.registeredActors[sentFrom])))
              
         elif msg == 'UPDATE_HARVESTABLE':
             self.registeredActors[sentFrom].harvestable = msgArgs[0]                

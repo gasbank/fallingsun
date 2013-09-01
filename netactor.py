@@ -1,5 +1,6 @@
 import cPickle
 import abc
+import socket
 from actor import SActor
 
 class SocketBuffer(object):
@@ -30,8 +31,11 @@ class SNetActor(SActor):
             return cPickle.load(f)
     
     def sendPacket(self, pkt):
-        with self.getWriteBuffer(512) as f:
-            cPickle.dump(pkt, f, cPickle.HIGHEST_PROTOCOL)
+        try:
+            with self.getWriteBuffer(512) as f:
+                cPickle.dump(pkt, f, cPickle.HIGHEST_PROTOCOL)
+        except socket.error:
+            self.warn('socket.error exception detected at sendPacket.')
 
     @abc.abstractmethod            
     def getSocket(self):
