@@ -12,11 +12,11 @@ def main():
     
     worldActor = SWorld(width=10, height=10)
     world = worldActor.channel
-    
-    SDisplayWindow(world, windowTitle='Falling Sun Client')
 
-    SClient(world, 'Client', ('127.0.0.1', 3000))
-        
+    client = SClient(world, 'Client', ('127.0.0.1', 3000)).channel
+    
+    SDisplayWindow(world, windowTitle='Falling Sun Client', client=client)
+
     logging.info('All actors initialized successfully.')
     logging.info('Starting the tick tasklet...')
     

@@ -36,12 +36,13 @@ class FadeoutText(object):
     
         
 class SDisplayWindow(SActor):
-    def __init__(self, world, windowTitle='Falling Sun'):
+    def __init__(self, world, windowTitle='Falling Sun', client=None):
         SActor.__init__(self, 'DisplayWindow')
         self.frame = 0
         self.world = world
         self.icons = {}
         self.time = 0
+        self._client = client
         
         pygame.init()
         pygame.display.set_caption(windowTitle)
@@ -55,6 +56,7 @@ class SDisplayWindow(SActor):
         self.fighterTile = pygame.image.load(os.path.join('data', '001-Fighter01.png'))
         self.thiefTile = pygame.image.load(os.path.join('data', '018-Thief03.png'))
         self.farmerTile = pygame.image.load(os.path.join('data', '143-Farmer01.png'))
+        self.headmanTile = pygame.image.load(os.path.join('data', '109-Civilian09.png'))
         
         self.world.send((self.channel, "JOIN",
                          ActorProperties(self.__class__.__name__,
@@ -371,7 +373,8 @@ class SDisplayWindow(SActor):
     def drawActor(self, screen, actorProp):
         
         actorImageMap = {'SPrey': self.fighterTile,
-                         'SWoodcutter': self.farmerTile}
+                         'SWoodcutter': self.farmerTile,
+                         'SHeadman': self.headmanTile}
         
         if actorProp.animatedSprite:
             
@@ -480,6 +483,31 @@ class SDisplayWindow(SActor):
                 
                 self.info('--%s--> %s' % ('CLOSE_WINDOW', self.world))
                 self.world.send((self.channel, "CLOSE_WINDOW"))
+                
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_RIGHT:
+                    self._client.send((self.channel, 'MOVE_PAWN', 'E', True))
+            if event.type == pygame.KEYUP:
+                if event.key == pygame.K_RIGHT:
+                    self._client.send((self.channel, 'MOVE_PAWN', 'E', False))
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_LEFT:
+                    self._client.send((self.channel, 'MOVE_PAWN', 'W', True))
+            if event.type == pygame.KEYUP:
+                if event.key == pygame.K_LEFT:
+                    self._client.send((self.channel, 'MOVE_PAWN', 'W', False))
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_UP:
+                    self._client.send((self.channel, 'MOVE_PAWN', 'N', True))
+            if event.type == pygame.KEYUP:
+                if event.key == pygame.K_UP:
+                    self._client.send((self.channel, 'MOVE_PAWN', 'N', False))
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_DOWN:
+                    self._client.send((self.channel, 'MOVE_PAWN', 'S', True))
+            if event.type == pygame.KEYUP:
+                if event.key == pygame.K_DOWN:
+                    self._client.send((self.channel, 'MOVE_PAWN', 'S', False))
                 
         screen = pygame.display.get_surface()
         background = pygame.Surface(screen.get_size())

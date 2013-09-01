@@ -44,6 +44,10 @@ class SWorld(SActor):
         self.lastSpawnTreeTime = -1
         self.disableCollisionCheck = disableCollisionCheck
         
+        # Network
+        self._server = None
+        self._client = None
+        
         self.debug('Created.')
     
     def startTickTasklet(self, tickOnlyOnce=False):
@@ -271,6 +275,16 @@ class SWorld(SActor):
             
             if msgArgs[0].name == 'SSight':
                 self.sightActors[sentFrom] = msgArgs[0]
+                
+            if msgArgs[0].name == 'SClient':
+                if self._client:
+                    raise RuntimeError('Second SClient try to join.')
+                self._client = sentFrom
+            
+            if msgArgs[0].name == 'SServer':
+                if self._server:
+                    raise RuntimeError('Second SServer try to join.')
+                self._server = sentFrom
             
             self.info('%s joined the world.' % msgArgs[0].instanceName)
             

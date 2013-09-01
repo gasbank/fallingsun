@@ -15,6 +15,16 @@ def printAllActorChannelBalances():
     for t in gTasklets:
         print t, t.alive, t.paused, t.blocked, t.scheduled, t.restorable
 
+class UnknownMessageError(Exception):
+    def __init__(self, msg, sentFrom):
+        Exception.__init__(self, 'Unknown message %s sent from %s'
+                           % (msg, sentFrom))
+
+class UnauthorizedAccessError(Exception):
+    def __init__(self, msg, sentFrom):
+        Exception.__init__(self, 'Unauthorized access %s sent from %s'
+                           % (msg, sentFrom))
+
 class NamedTasklet(stackless.tasklet):
     def __init__(self, name=''):
         stackless.tasklet.__init__(self)
@@ -24,7 +34,7 @@ class NamedTasklet(stackless.tasklet):
     def __repr__(self):
         assert(len(self.name) > 0)
         return "<Tasklet(%s) 0x%08X>" % (self.name, id(self))
-    
+
 class NamedChannel(stackless.channel):
     name = ''
     

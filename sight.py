@@ -31,10 +31,10 @@ class SSight(SActor):
         elif msg == 'COLLISION':
             pass
         elif msg == 'NEIGHBORS_LEFT':
-            self.user.send((self.channel, 'DESPAWN', msgArgs[0]))
+            self.user.send((self.channel, 'SEND_DESPAWN', msgArgs[0]))
             
         elif msg == 'NEIGHBORS_ENTERED':
-            self.user.send((self.channel, 'SPAWN', msgArgs[0]))
+            self.user.send((self.channel, 'SEND_SPAWN', msgArgs[0]))
             
         elif msg == 'KILL_YOURSELF':
             self.world.send((self.channel, 'KILLME'))
@@ -44,7 +44,7 @@ class SSight(SActor):
         
         elif msg == 'UPDATE_VECTOR_OF_NEIGHBORS':
             a, p = msgArgs[0]
-            self.user.send((self.channel, 'UPDATE_VECTOR', a, p))
+            self.user.send((self.channel, 'SEND_UPDATE_VECTOR', a, p))
         else:
             raise RuntimeError("ERROR: Unknown message %s sent from %s"
                                % (msg, sentFrom));

@@ -16,9 +16,9 @@ def main():
     
     SDisplayWindow(world, windowTitle='Falling Sun Server')
 
-    for _ in range(5):
+    for i in range(5):
         SPrey(world, location=(32 * 0 + 16, 32 * 0 + 16), velocity=20,
-              angle=90, instanceName='Prey', stamina=100, maxStamina=100,
+              angle=90, instanceName='Prey%d'%i, stamina=100, maxStamina=100,
               intention='ROAMING')
     
     SServer(world, 'Server')

@@ -1,4 +1,4 @@
-from actor import SActor, ActorProperties, NamedTasklet
+from actor import SActor, ActorProperties, NamedTasklet, UnknownMessageError
 from blank import SBlank
 from socket import AF_INET, SOCK_STREAM
 from stacklesssocket import stdsocket as socket, install, uninstall
@@ -10,6 +10,7 @@ class SClient(SActor):
         self.world = world
         self.serverAddress = serverAddress
         self.blankActors = {}
+        self.ownedActorId = None
         
         NamedTasklet(self.startClientLoop)()
         
@@ -83,6 +84,24 @@ class SClient(SActor):
             actorId, location, angle, velocity = msgArgs[0]
             self.world.send((self.blankActors[actorId].channel,
                              'UPDATE_VECTOR', angle, velocity))
+        elif msg == 'OWNERSHIP':
+            self.ownedActorId = msgArgs[0]
+            self.info('Ownership set to %d.' % self.ownedActorId)
+        elif msg == 'MOVE_PAWN':
+            direction, pressed = msgArgs
+            
+            if direction == 'N': angle = 90*0
+            elif direction == 'E': angle = 90*1
+            elif direction == 'S': angle = 90*2
+            elif direction == 'W': angle = 90*3
+            else: raise RuntimeError('Unknown direction %s', direction)
+            
+            velocity = 2 if pressed else 0
+            
+            if self.ownedActorId:
+                f = self.socket.makefile('wb', 512)
+                cPickle.dump(('UPDATE_VECTOR', (self.ownedActorId,
+                              (angle, velocity))), f, cPickle.HIGHEST_PROTOCOL)
+                f.close()
         else:
-            raise RuntimeError("ERROR: Unknown message %s sent from %s"
-                               % (msg, sentFrom));
+            raise UnknownMessageError(msg, sentFrom);
