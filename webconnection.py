@@ -25,19 +25,23 @@ class WebConnection(Connection):
         for k, v in headers.iteritems():
             logging.debug('%s : %s' % (k, v))
             
-        key = headers['Sec-WebSocket-Key']
-        resp_data = self.HSHAKE_RESP % ((base64.b64encode(hashlib.sha1(key+self.MAGIC).digest()),))
-        logging.debug('Response: [%s]' % (resp_data,))
-        return self.clientSocket.send(resp_data)
+        if headers.has_key('Sec-WebSocket-Key'):
+            key = headers['Sec-WebSocket-Key']
+            resp_data = self.HSHAKE_RESP % ((base64.b64encode(hashlib.sha1(key+self.MAGIC).digest()),))
+            logging.debug('Response: [%s]' % (resp_data,))
+            return self.clientSocket.send(resp_data)
+        else:
+            self.clientSocket.close()
 
     def parse_headers(self, data):
         headers = {}
         lines = data.splitlines()
-        for l in lines:
-            parts = l.split(": ", 1)
-            if len(parts) == 2:
-                headers[parts[0]] = parts[1]
-        headers['code'] = lines[len(lines) - 1]
+        if lines:
+            for l in lines:
+                parts = l.split(": ", 1)
+                if len(parts) == 2:
+                    headers[parts[0]] = parts[1]
+            headers['code'] = lines[len(lines) - 1]
         return headers
 
     def sendPacket(self, pktDump):
