@@ -3,4 +3,5 @@ encoding/architect.py=utf-8
 encoding/bandit.py=utf-8
 encoding/displaywindow.py=utf-8
 encoding/prey.py=utf-8
+encoding/tornadoserver.py=utf-8
 encoding/woodcutter.py=utf-8

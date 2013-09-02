@@ -294,11 +294,11 @@ class SWorld(SActor):
             oldAngle = self.registeredActors[sentFrom].angle
             oldVelocity = self.registeredActors[sentFrom].velocity
             
-            if abs(oldAngle - msgArgs[0]) > 0.05 or abs(oldVelocity - msgArgs[1]) > 0.05: 
+            if abs(oldAngle - msgArgs[0]) > 5 or abs(oldVelocity - msgArgs[1]) > 1: 
                 self.registeredActors[sentFrom].angle = msgArgs[0]
                 self.registeredActors[sentFrom].velocity = msgArgs[1]
                 
-                for a,p in self.registeredActors[sentFrom].neighbored:
+                for a,p in list(self.registeredActors[sentFrom].neighbored):
                     if a() and p() and p().name == 'SSight':
                         a().send((self.channel, 'UPDATE_VECTOR_OF_NEIGHBORS',
                                 (sentFrom, self.registeredActors[sentFrom])))
@@ -331,7 +331,7 @@ class SWorld(SActor):
         elif msg == 'CLOSE_WINDOW':
             self.tickLoopEnable = False
             for a,p in self.registeredActors.iteritems():
-                if p.name in ['SServer', 'SClient']:
+                if p.name in ['SServer', 'SWebSocketServer', 'SClient']:
                     a.send((self.channel, 'CLOSE_SOCKET'))
         elif msg == 'NO_MORE_TICK_EVENT':
             self.registeredActors[sentFrom].tickEvent = False
@@ -340,6 +340,11 @@ class SWorld(SActor):
                                                        self.tileData.height))
         elif msg == 'SIGHT_RANGE':
             self.registeredActors[sentFrom].sightRange = msgArgs[0]
+        elif msg == 'CHAT_TO_ALL':
+            for a,p in self.registeredActors.iteritems():
+                if p.name == 'SUser':
+                    self.debug('%s sent chat message %s to %s.' % (sentFrom,a,msgArgs[0]))
+                    a.send((sentFrom, 'CHAT', msgArgs[0]))
         else:
             raise RuntimeError("ERROR: The world got unknown message %s sent from %s"
                                % (msg, sentFrom));

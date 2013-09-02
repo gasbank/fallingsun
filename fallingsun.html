@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html>
+<body>
+<canvas id="myCanvas" width="320" height="320" style="border:1px solid #000000;">
+Your browser does not support the HTML5 canvas tag.
+</canvas>
+<div>
+<textarea id="logger" cols="60" rows="5" style='font-size:80%'>
+</textarea>
+</div>
+<div>
+&gt;<input id="chatInput" />
+</div>
+<script>
+var logger=document.getElementById("logger");
+
+var WIDTH = 320;
+var HEIGHT = 320;
+var x = 50;
+var y = 50;
+var mx = 0;
+var my = 0;
+var c=document.getElementById("myCanvas");
+var ctx=c.getContext("2d");
+ctx.fillStyle="#FF0000";
+ctx.fillRect(0,0,150,75);
+
+ctx.moveTo(0,0);
+ctx.lineTo(200,100);
+ctx.stroke();
+
+ctx.beginPath();
+ctx.arc(95,50,40,0,2*Math.PI);
+ctx.stroke();
+
+ctx.fillStyle="#000000";
+ctx.font="30px Arial";
+ctx.fillText("Hello 한글",10,50);
+
+function clear() {
+  ctx.clearRect(0, 0, WIDTH, HEIGHT);
+}
+
+var cat = new Image();
+cat.src = "data/109-Civilian09.png";
+cat.onload = function() {
+    //ctx.drawImage(cat,50,10,32,32,10,10,72,32);
+};
+
+var cat2 = new Image();
+cat2.src = "data/001-Fighter01.png";
+cat2.onload = function() {
+    //ctx.drawImage(cat,50,10,32,32,10,10,72,32);
+};
+
+setInterval(draw, 50);
+window.onkeydown = keydownControl;
+window.onkeyup = keyupControl
+
+function keydownControl(e) {
+    if(e.keyCode==37) {
+        mx = -2;
+        my = 0;
+        yIndex=1;
+        
+        if (ownedActorId != 0) {
+            var cmd = ['UPDATE_VECTOR', [ownedActorId, [90*3, 2]]];
+            ws.send(JSON.stringify(cmd))
+        }
+    } else
+    if (e.keyCode==38) {
+        mx = 0;
+        my = -2;
+        yIndex=3;
+        
+        if (ownedActorId != 0) {
+            var cmd = ['UPDATE_VECTOR', [ownedActorId, [90*0, 2]]];
+            ws.send(JSON.stringify(cmd))
+        }
+    } else if
+    (e.keyCode==39) {
+        mx = 2;
+        my = 0;
+        yIndex=2;
+        
+        if (ownedActorId != 0) {
+            var cmd = ['UPDATE_VECTOR', [ownedActorId, [90*1, 2]]];
+            ws.send(JSON.stringify(cmd))
+        }
+    } else
+    if (e.keyCode==40) {
+        mx = 0;
+        my = 2;
+        yIndex=0;
+        
+        if (ownedActorId != 0) {
+            var cmd = ['UPDATE_VECTOR', [ownedActorId, [90*2, 2]]];
+            ws.send(JSON.stringify(cmd))
+        }
+    }
+}
+
+function keyupControl(e) {
+    if(e.keyCode==37) {
+        mx = -2;
+        my = 0;
+        yIndex=1;
+        
+        if (ownedActorId != 0) {
+            var cmd = ['UPDATE_VECTOR', [ownedActorId, [90*3, 0]]];
+            ws.send(JSON.stringify(cmd))
+        }
+    } else
+    if (e.keyCode==38) {
+        mx = 0;
+        my = -2;
+        yIndex=3;
+        
+        if (ownedActorId != 0) {
+            var cmd = ['UPDATE_VECTOR', [ownedActorId, [90*0, 0]]];
+            ws.send(JSON.stringify(cmd))
+        }
+    } else if
+    (e.keyCode==39) {
+        mx = 2;
+        my = 0;
+        yIndex=2;
+        
+        if (ownedActorId != 0) {
+            var cmd = ['UPDATE_VECTOR', [ownedActorId, [90*1, 0]]];
+            ws.send(JSON.stringify(cmd))
+        }
+    } else
+    if (e.keyCode==40) {
+        mx = 0;
+        my = 2;
+        yIndex=0;
+        
+        if (ownedActorId != 0) {
+            var cmd = ['UPDATE_VECTOR', [ownedActorId, [90*2, 0]]];
+            ws.send(JSON.stringify(cmd))
+        }
+    }
+}
+
+var yIndex = 1
+var xIndex = 0
+var frameCount = 0
+function draw() {
+    frameCount += 1;
+  clear();
+  circle(x, y, 10);
+  
+  
+  for (var a in actors) {
+    
+    if (actors[a].angle < 0) actors[a].angle += 360;
+    
+    xIndex = ~~((Math.abs(mx)+Math.abs(my)) * actors[a].velocity * frameCount/10) % 4;
+    angle = actors[a].angle
+    if (270+45 <= angle || 0 <= angle && angle <= 45) {
+        yIndex = 3;
+        actors[a].location[1] -= actors[a].velocity;
+    } else if (45 <= angle && angle <= 90+45) {
+        yIndex = 2;
+        actors[a].location[0] += actors[a].velocity;
+    } else if (90+45 <= angle && angle <= 90+90+45) {
+        yIndex = 0;
+        actors[a].location[1] += actors[a].velocity;
+    } else {
+        yIndex = 1;
+        actors[a].location[0] -= actors[a].velocity;
+    }
+    
+    if (actors[a].name == 'SHeadman') {
+        imageName = cat;
+    } else {
+        imageName = cat2;
+    }
+    ctx.drawImage(imageName,32*xIndex,48*yIndex,32,48,actors[a].location[0],actors[a].location[1],32,48);
+  }
+  
+  
+  
+  if (x + mx > WIDTH || x + mx < 0)
+        mx = -mx;
+  if (y + my > HEIGHT || y + my < 0)
+        my = -my;
+  
+  x += mx;
+  y += my;
+  
+}
+
+function circle(x,y,r) {
+  ctx.beginPath();
+  ctx.arc(x, y, r, 0, Math.PI*2, true);
+  ctx.fill();
+}
+
+//["SPAWN", [[44036624, "SPrey", [287, 241], -84, 5]]]
+//["UPDATE_VECTOR", [44036624, [272, 240], -89, 5]]
+//["DESPAWN", [[44036624]]]
+
+var actors = {}
+var ownedActorId = 0;
+
+//var ws = new WebSocket("ws://localhost:8888/ws");
+var ws = new WebSocket("ws://localhost:3001/");
+ws.onopen = function() {
+    //alert('connected!')
+    //ws.send("['HELLO',0]");
+}
+ws.onmessage = function(evt) {
+    var received_msg = evt.data;
+    
+    cmd = JSON.parse(received_msg);
+    
+    /*
+    logger.innerHTML += received_msg + '\n';
+    logger.scrollTop = logger.scrollHeight;
+    */
+    
+    if (cmd[0] == 'CLOSE_SOCKET') {
+        logger.innerHTML += '===Socket closing requested from the server...===\n';
+        ws.close();
+    } else if (cmd[0] == 'SPAWN') {
+        if (cmd[1][0][1] == 'SPrey' || cmd[1][0][1] == 'SHeadman') {
+            actors[cmd[1][0][0]] = {location:cmd[1][0][2], angle:cmd[1][0][3], velocity:cmd[1][0][4], name:cmd[1][0][1]};
+        }
+    } else if (cmd[0] == 'DESPAWN') {
+        delete actors[cmd[1][0][0]];
+    } else if (cmd[0] == 'UPDATE_VECTOR') {
+        actors[cmd[1][0]].location[0] = cmd[1][1][0];
+        actors[cmd[1][0]].location[1] = cmd[1][1][1];
+        actors[cmd[1][0]].angle = cmd[1][2];
+        actors[cmd[1][0]].velocity = cmd[1][3];
+    } else if (cmd[0] == 'OWNERSHIP') {
+        ownedActorId = cmd[1];
+    } else if (cmd[0] == 'CHAT') {
+        logger.innerHTML += cmd[1] + '\n';
+        logger.scrollTop = logger.scrollHeight;
+    }
+}
+ws.onclose = function() {
+    alert("Connection is closed.");
+}
+
+var chatInput = document.getElementById("chatInput");
+chatInput.onkeydown = function(e) {
+    if (e.keyCode == 13) {
+        var chatCmd = ['BROADCAST_CHAT', chatInput.value];
+        ws.send(JSON.stringify(chatCmd));
+        chatInput.value = '';
+    }
+}
+</script>
+</body>
+</html>

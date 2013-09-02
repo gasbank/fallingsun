@@ -381,7 +381,10 @@ class SDisplayWindow(SActor):
             if actorProp.name in ['SPrey', 'SWoodcutter']:
                 itemImage = actorImageMap[actorProp.name]
             elif actorProp.name == 'SBlank':
-                itemImage = actorImageMap[actorProp.blankType] 
+                if actorImageMap.has_key(actorProp.blankType):
+                    itemImage = actorImageMap[actorProp.blankType]
+                else:
+                    return 
             else:
                 raise RuntimeError('Not available for the moment.')
             

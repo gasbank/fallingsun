@@ -3,6 +3,8 @@ from netactor import SNetActor
 from blank import SBlank
 from socket import AF_INET, SOCK_STREAM
 from stacklesssocket import stdsocket as socket, install, uninstall
+from connection import Connection
+import struct
 
 class SClient(SNetActor):
     def __init__(self, world, instanceName, serverAddress):
@@ -20,8 +22,8 @@ class SClient(SNetActor):
                                          instanceName=self.instanceName,
                                          physical=False, public=False)))
 
-    def getSocket(self):
-        return self.socket
+    def getConnection(self):
+        return self.connection
 
     def startClientLoop(self):
 
@@ -35,6 +37,7 @@ class SClient(SNetActor):
 
     def startClientLoopInner(self):
         self.socket = socket.socket(AF_INET, SOCK_STREAM)
+        self.connection = Connection(self.socket)
         
         try:
             self.socket.connect(self.serverAddress)
@@ -44,7 +47,10 @@ class SClient(SNetActor):
             
         while 1:
             try:
-                cmd, cmdArgs = self.recvPacket()
+                cmd, cmdArgs = self.recvCommand()
+            except struct.error:
+                self.info('struct.error exception detected.')
+                break
             except socket.error:
                 self.info('socket.error exception detected.')
                 break
@@ -64,6 +70,7 @@ class SClient(SNetActor):
             pass
         elif msg == 'CLOSE_SOCKET':
             self.info('CLOSE_SOCKET from %s' % sentFrom)
+            self.sendCommand(('BYE'))
 
             # Cleanup all blank actors if server-side closing
             # of the socket happens. 
@@ -101,8 +108,10 @@ class SClient(SNetActor):
             velocity = 2 if pressed else 0
             
             if self.ownedActorId:
-                self.sendPacket(('UPDATE_VECTOR', (self.ownedActorId,
+                self.sendCommand(('UPDATE_VECTOR', (self.ownedActorId,
                                                    (angle, velocity))))
+        elif msg == 'CHAT':
+            self.info('Chat received from %s: %s' % (sentFrom, msgArgs[0]))
         elif msg == None:
             pass
         else:

@@ -51,7 +51,7 @@ class User:
             traceback.print_exc()
         finally:
             if self.connection:
-                self.connection.Disconnect()
+                self.connection.disconnect()
                 self.connection = None
 
     def HandleCommand(self):
@@ -105,7 +105,7 @@ class Connection:
 
         self.userID = id(User(self))
 
-    def Disconnect(self):
+    def disconnect(self):
         if self.disconnected:
             raise RuntimeError("Unexpected call")
         self.disconnected = True

@@ -2,8 +2,9 @@ from actor import ActorProperties, NamedTasklet, UnknownMessageError, Unauthoriz
 from netactor import SNetActor
 from prey import SPrey
 from sight import SSight
-import server
+import connection
 import socket
+import struct
 
 class SUser(SNetActor):
     
@@ -29,42 +30,41 @@ class SUser(SNetActor):
                                          instanceName=self.instanceName,
                                          physical=False, public=False)))
         
-        self.sendPacket(('OWNERSHIP', id(self.pawn)))
-                        
+        self.info('about to send OWNERSHIP...!')
+        self.sendCommand(('OWNERSHIP', id(self.pawn)))
+        self.info('OWNERSHIP sent...!')
         # The tasklet will hold a reference to the user keeping the instance
         # alive as long as it is handling commands.
         NamedTasklet(self.Run)()
         
-    def getSocket(self):
-        return self.connection.clientSocket
+    def getConnection(self):
+        return self.connection
 
     def Run(self):
-        serverActor = self.connection.serverActor
-
-        # Notify the server that a user is connected.
-        serverActor.RegisterUser(self)
-        self.info("Connected %d from %s" % (id(self),
-                                            self.connection.clientAddress))
-
         try:
             while self.HandleCommand():
                 pass
 
             self.OnUserDisconnection()
-        except server.RemoteDisconnectionError:
+        except connection.RemoteDisconnectionError:
             self.OnRemoteDisconnection()
             self.connection = None
         finally:
             if self.connection:
-                self.connection.Disconnect()
+                self.connection.disconnect()
                 self.connection = None
             
     def HandleCommand(self):
         try:
-            cmd, cmdArgs = self.recvPacket()
+            cmd, cmdArgs = self.recvCommand()
+        except ValueError:
+            self.info('invalid value received.')
+            return False
         except socket.error:
-            raise server.RemoteDisconnectionError
+            raise connection.RemoteDisconnectionError
         except EOFError:
+            return False
+        except struct.error:
             return False
         
         try:
@@ -98,13 +98,19 @@ class SUser(SNetActor):
             for na, np in msgArgs[0]:
                 if na() is None or np() is None:
                     continue
-                
+                '''
+                if np().name not in ['SPrey']:
+                    continue
+                '''
                 name = 'SHeadman' if na() is self.pawn else np().name
                 #name = np.name  
-                p = (id(na()), name, np().location, np().angle, np().velocity)
+                p = (id(na()), name,
+                     tuple([int(v) for v in np().location]),
+                     int(np().angle), int(np().velocity))
                 actors.append(p)
                 
-            self.sendPacket(('SPAWN', actors))
+            for a in actors:
+                self.sendCommand(('SPAWN', [a]))
 
         elif msg == 'SEND_DESPAWN':
             if not self.connection:
@@ -112,18 +118,26 @@ class SUser(SNetActor):
             
             actors = []
             for na, np in msgArgs[0]:
-                actors.append((id(na()),))
+                '''
+                if na() is None or np() is None:
+                    continue
+                if np().name not in ['SPrey']:
+                    continue
+                '''
                 
-            self.sendPacket(('DESPAWN', actors))
+                actors.append((id(na()),))
+            
+            for a in actors:    
+                self.sendCommand(('DESPAWN', [a]))
 
         elif msg == 'SEND_UPDATE_VECTOR':
             if not self.connection:
                 return
             
-            self.sendPacket(('UPDATE_VECTOR', (id(msgArgs[0]),
-                                               msgArgs[1].location,
-                                               msgArgs[1].angle,
-                                               msgArgs[1].velocity)))
+            self.sendCommand(('UPDATE_VECTOR', (id(msgArgs[0]),
+                                               tuple([int(v) for v in msgArgs[1].location]),
+                                               int(msgArgs[1].angle),
+                                               int(msgArgs[1].velocity))))
 
         elif msg == 'UPDATE_VECTOR':
             actorId, (angle, velocity) = msgArgs[0]
@@ -136,8 +150,14 @@ class SUser(SNetActor):
                 
         elif msg == 'CLOSE_SOCKET':
             if self.connection:
-                self.sendPacket((msg, None))
+                self.sendCommand((msg, None))
         elif msg == 'YOU_ARE_DEAD':
             pass
+        elif msg == 'BROADCAST_CHAT':
+            self.world.send((self.channel, 'CHAT_TO_ALL', msgArgs[0]))
+        elif msg == 'CHAT':
+            self.sendCommand((msg, '%d:%s'%(id(sentFrom),msgArgs[0])))
+        elif msg == 'BYE':
+            self.connection.disconnect()
         else:
             raise UnknownMessageError(msg, sentFrom);

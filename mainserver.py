@@ -5,6 +5,7 @@ from world import SWorld
 from displaywindow import SDisplayWindow
 from prey import SPrey
 from server import SServer
+from websocketserver import SWebSocketServer
 
 def main():
     random.seed(1)
@@ -16,12 +17,13 @@ def main():
     
     SDisplayWindow(world, windowTitle='Falling Sun Server')
 
-    for i in range(5):
+    for i in range(1):
         SPrey(world, location=(32 * 0 + 16, 32 * 0 + 16), velocity=20,
               angle=90, instanceName='Prey%d'%i, stamina=100, maxStamina=100,
               intention='ROAMING')
     
     SServer(world, 'Server')
+    SWebSocketServer(world, 'WebSocketServer')
         
     logging.info('All actors initialized successfully.')
     logging.info('Starting the tick tasklet...')
