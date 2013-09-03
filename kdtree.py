@@ -35,8 +35,18 @@ class KdNode(object):
             points += self.right.getAllPoints()
         return points
     
+    def getMaxDepth(self):
+        return 1 + max(self.left.getMaxDepth() if self.left else 0,
+                       self.right.getMaxDepth() if self.right else 0)
+    
     def __len__(self):
         return sum((1, len(self.left or []), len(self.right or [])))
+    
+    def __nonzero__(self):
+        return self is not None
+    
+    def __bool__(self):
+        return self.__nonzero__()
         
 
 class Rect(object):
@@ -125,29 +135,30 @@ def distance(q, p):
 
 class KdTree(object):
     def __init__(self, x=None, points=None):
+        self._root = None
         
         if x is not None and points is None:
-            self._root = self._insert(x, None, 0)
+            self.insert(x)
         elif x is None and points is not None:
             
-            self._root = self._insert(points[0], None, 0)
+            self.insert(points[0])
              
             for x in points[1:]:
                 self.insert(x)
-            
-        elif x is None and points is None:
-            raise RuntimeError('Both x and points are none.')
-        else:
+        elif x and points:
             raise RuntimeError('Both x and points are not none.')
 
     def __len__(self):
         return len(self._root or [])
     
     def getAllPoints(self):
-        return self._root.getAllPoints()
+        if self._root:
+            return self._root.getAllPoints()
+        else:
+            return []
         
     def insert(self, x):
-        return self._insert(x, self._root, 0)
+        self._root = self._insert(x, self._root, 0)
         
     def nearestNeighbor(self, q):
         closest = self._nearNeigh(q, self._root, 0, self._getRootRect(),
@@ -161,6 +172,13 @@ class KdTree(object):
     def rangePoints(self, Q):
         _, points = self._range(Q, self._root, 0, self._getRootRect(), True)
         return points
+    
+    def deleteNode(self, x):
+        self._root = self._deleteNode(x, self._root, 0)
+        
+    def getMaxDepth(self):
+        if self._root: return self._root.getMaxDepth()
+        else: return 0
         
     def _getRootRect(self):
         return Rect(-10000,-10000,20000,20000)
@@ -224,34 +242,66 @@ class KdTree(object):
         
         return c, points
             
-
+    def _deleteNode(self, x, t, cd):
+        if t is None:
+            raise RuntimeError('Invalid node to delete.')
+        elif x == t.data:
+            if t.right:
+                t.data = t.right.findMin(cd, (cd+1)%DIM)
+                t.right = self._deleteNode(t.data, t.right, (cd+1)%DIM)
+            elif t.left:
+                t.data = t.left.findMin(cd, (cd+1)%DIM)
+                t.right = self._deleteNode(t.data, t.left, (cd+1)%DIM)
+                t.left = None
+            else:
+                t = None
+        elif x[cd] < t.data[cd]:
+            t.left = self._deleteNode(x, t.left, (cd+1)%DIM)
+        else:
+            t.right = self._deleteNode(x, t.right, (cd+1)%DIM)
+        
+        return t
         
 class KdTreeTestCase(unittest.TestCase):
+    
+    def testEmpty(self):
+        
+        t = KdTree()
+        self.assertEqual(0, len(t))
+        self.assertEqual([], t.getAllPoints())
+        self.assertEqual(0, t.getMaxDepth())
+    
     def testInsertion(self):
         
         t = KdTree((10,20))
         self.assertEqual((10,20), t._root.data)
         self.assertEqual(1, len(t))
+        self.assertEqual(1, t.getMaxDepth())
         
         t.insert((20,5))
         self.assertEqual((20,5), t._root.right.data)
         self.assertEqual(2, len(t))
+        self.assertEqual(2, t.getMaxDepth())
         
         t.insert((5,10))
         self.assertEqual((5,10), t._root.left.data)
         self.assertEqual(3, len(t))
+        self.assertEqual(2, t.getMaxDepth())
         
         t.insert((0,7))
         self.assertEqual((0,7), t._root.left.left.data)
         self.assertEqual(4, len(t))
+        self.assertEqual(3, t.getMaxDepth())
         
         t.insert((5,1))
         self.assertEqual((5,1), t._root.left.left.right.data)
         self.assertEqual(5, len(t))
+        self.assertEqual(4, t.getMaxDepth())
         
         t.insert((25,20))
         self.assertEqual((25,20), t._root.right.right.data)
         self.assertEqual(6, len(t))
+        self.assertEqual(4, t.getMaxDepth())
         
     def testFindMin(self):
         t = KdTree((10,20))
@@ -379,6 +429,39 @@ class KdTreeTestCase(unittest.TestCase):
         self.assertEqual(set(points),
                          set(t.rangePoints(Range(-100,-100,200,200))))
         
+    def testDeleteNode(self):
+        points = [(10,20),(20,5),(5,10),(0,7),(5,1),(25,20)]
+        t = KdTree(points=points)
+        
+        self.assertEqual(set(points), set(t.getAllPoints()))
+        
+        t.deleteNode((10,20))
+        self.assertEqual(set(points)-set([(10,20)]), set(t.getAllPoints()))
+        
+        t.deleteNode((0,7))
+        self.assertEqual(set(points)-set([(10,20),(0,7)]), set(t.getAllPoints()))
+        
+        t.deleteNode((5,1))
+        self.assertEqual(set(points)-set([(10,20),(0,7),(5,1)]), set(t.getAllPoints()))
+        
+        t.deleteNode((20,5))
+        self.assertEqual(set(points)-set([(10,20),(0,7),(5,1),(20,5)]), set(t.getAllPoints()))
+        
+        t.deleteNode((5,10))
+        self.assertEqual(set(points)-set([(10,20),(0,7),(5,1),(20,5),(5,10)]), set(t.getAllPoints()))
+        
+        t.deleteNode((25,20))
+        self.assertEqual(set(points)-set([(10,20),(0,7),(5,1),(20,5),(5,10),(25,20)]), set(t.getAllPoints()))
+        
+        t.insert((0,0))
+        self.assertEqual(set([(0,0)]), set(t.getAllPoints()))
+        
+        t.insert((1,0))
+        self.assertEqual(set([(0,0),(1,0)]), set(t.getAllPoints()))
+        
+        t.deleteNode((0,0))
+        self.assertEqual(set([(1,0)]), set(t.getAllPoints()))
+        
 def getRandomPoint():
     SIZE = 9000
     return (random.randrange(-SIZE,SIZE), random.randrange(-SIZE,SIZE))       
@@ -396,8 +479,9 @@ if __name__ == '__main__':
     
     random.seed(1)
     
-    #runit()
-    
+    '''
+    === Nearest neighbor search ===
+    '''    
     points = list(set([getRandomPoint() for x in range(5000)]))
     t = KdTree(points=points)
     print '# of points', len(points)
@@ -421,6 +505,9 @@ if __name__ == '__main__':
     elapsed = time.clock() - t0
     print 'kd-tree:', elapsed, 'seconds elapsed.', elapsed/nq, 'sec per query.'
     
+    '''
+    === Nearest neighbor (bruteforce) for the comparison ===
+    '''
     t0 = time.clock()
     for i in range(nq):
         q = getRandomPoint() #(9000,9000)
@@ -429,6 +516,9 @@ if __name__ == '__main__':
     elapsed = time.clock() - t0
     print 'bruteforce:', elapsed, 'seconds elapsed.', elapsed/nq, 'sec per query.'
     
+    '''
+    === Range query ===
+    '''
     t0 = time.clock()
     nq = 100 # query count
     for i in range(nq):
@@ -438,7 +528,8 @@ if __name__ == '__main__':
         Q = Range(q0[0],q0[1],w,h)
         
         rangePoints = t.rangePoints(Q)
-        print len(rangePoints)
+        #print len(rangePoints)
+        
         '''
         
         r1 = set(rangePoints) 
@@ -452,5 +543,36 @@ if __name__ == '__main__':
 
     elapsed = time.clock() - t0
     print 'kd-tree rangePoints:', elapsed, 'seconds elapsed.', elapsed/nq, 'sec per query.'
+    
+    
+    '''
+    === Insertion/Deletion ===
+    '''
+    t0 = time.clock()
+    n = 100
+    points = list(set([getRandomPoint() for x in range(n)]))
+    t = KdTree(points=points)
+    print '# of points', len(points)
+    print 'kd-tree construction:', elapsed, 'seconds elapsed.', elapsed/n, 'sec per element. Max depth=', t.getMaxDepth()
+
+    t0 = time.clock()
+    nq = 200000 # insertion/deletion count
+    insCount = delCount = 0
+    for i in range(nq):
+        action = random.choice(['INS', 'DEL'])
+        if action == 'INS':
+            p = getRandomPoint()
+            points.append(p)
+            t.insert(p)
+            insCount += 1
+        else:
+            p = random.choice(points)
+            points.remove(p)
+            t.deleteNode(p)
+            delCount += 1
+            
+    elapsed = time.clock() - t0
+    print 'kd-tree ins', insCount, 'del', delCount
+    print 'kd-tree ins/del:', elapsed, 'seconds elapsed.', elapsed/nq, 'sec per ins/del. Max depth=', t.getMaxDepth()
     
     
