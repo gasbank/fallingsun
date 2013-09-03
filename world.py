@@ -7,6 +7,7 @@ import random
 from home import SHome
 import level
 import weakref
+import time
 
 class WorldState:
     def __init__(self, updateRate, time, tileData):
@@ -24,10 +25,10 @@ class SWorld(SActor):
         SActor.__init__(self, 'World')
         
         # Actor dictionaries
-        self.registeredActors = OrderedDict()
-        self.aboutToBeKilledActors = OrderedDict()
-        self.tickDisabledActors = OrderedDict()
-        self.sightActors = OrderedDict()
+        self.registeredActors = {}
+        self.aboutToBeKilledActors = {}
+        self.tickDisabledActors = {}
+        #self.sightActors = weakref.WeakValueDictionary() #{}
         
         # Tick
         self.maxUpdateRate = 30
@@ -62,7 +63,7 @@ class SWorld(SActor):
                 
     def killDeadActors(self):
         
-        for actor in self.aboutToBeKilledActors:
+        for actor in list(self.aboutToBeKilledActors):
             actor.send((self.channel, 'YOU_ARE_DEAD'))
             actor.send_exception(TaskletExit)
             
@@ -119,7 +120,7 @@ class SWorld(SActor):
     def updateActorPosition(self):
         actorPositions = []
         
-        for actor in self.registeredActors:
+        for actor in list(self.registeredActors):
             actorProp = self.registeredActors[actor]
             if actorProp.public:
                 x, y = actorProp.location
@@ -145,7 +146,7 @@ class SWorld(SActor):
             if self.registeredActors[actor].public:
                 ws.actors.append((actor, self.registeredActors[actor]))
                 
-        for actor in self.registeredActors:
+        for actor in list(self.registeredActors):
             self.debug('%s --WORLD_STATE--> %s' % (self.channel, actor))
             actor.send((self.channel, "WORLD_STATE", ws))
 
@@ -176,11 +177,45 @@ class SWorld(SActor):
                 self.tickDisabledActors[actor] = self.registeredActors[actor]
                 del self.registeredActors[actor]
 
-    def sendNeighborEnterLeaveToActors(self):
+    def sendSightNeighborEnterLeaveToActors(self):
+        
+        for p in self.registeredActors.itervalues():
+            p.neighbored.clear()
         
         for a, p in self.registeredActors.iteritems():
-            if not p.public: continue
+            if p.name != 'SSight': continue
+
+            oldNeighbors = p.neighbors
+            p.neighbors = set()
             
+            k = self.tileData.toTileIndex(p.location)
+            
+            for aa, pp in self.registeredActors.iteritems():
+                if a is aa: continue
+                
+                kk = self.tileData.toTileIndex(pp.location)
+                
+                isNeighbor = None
+                if p.name is 'SSight':
+                    isNeighbor = (abs(k[0] - kk[0]) <= p.sightRange) and (abs(k[1] - kk[1]) <= p.sightRange) 
+                else:
+                    isNeighbor = abs(k[0] - kk[0]) + abs(k[1] - kk[1]) <= 1
+                
+                if isNeighbor:
+                    p.neighbors.add((weakref.ref(aa), weakref.ref(pp)))
+                    pp.neighbored.add((weakref.ref(a), weakref.ref(p)))
+                    
+            newlyLeft = oldNeighbors - p.neighbors
+            newlyEntered = p.neighbors - oldNeighbors
+            
+            if newlyLeft:
+                a.send((self.channel, 'NEIGHBORS_LEFT', newlyLeft))
+            if newlyEntered:
+                a.send((self.channel, 'NEIGHBORS_ENTERED', newlyEntered))
+
+    def sendNeighborEnterLeaveToActors(self):
+        
+        for p in self.registeredActors.itervalues():
             p.neighbored.clear()
         
         for a, p in self.registeredActors.iteritems():
@@ -222,7 +257,8 @@ class SWorld(SActor):
         self.killDeadActors()
         self.updateActorPosition()
         self.sendWorldStateToActors(startTime)
-        self.sendNeighborEnterLeaveToActors()
+        #self.sendNeighborEnterLeaveToActors()
+        self.sendSightNeighborEnterLeaveToActors()
 
         if 0 < self.spawnTreeInterval < startTime - self.lastSpawnTreeTime:
             self.spawnTree()
@@ -243,8 +279,11 @@ class SWorld(SActor):
     def tickLoop(self):
         startTime = 0 #time.clock()
         while self.tickLoopEnable:
+            curClock = time.clock()
             
             self.processOneTick(startTime)
+            
+            #self.info('Tick took %.3f seconds.' % (time.clock() - curClock))
                         
             startTime += 1.0 / self.updateRate
             
@@ -273,11 +312,12 @@ class SWorld(SActor):
                     
                     self.tileData.placeTent(int(msgArgs[0].location[0]//32),
                                             int(msgArgs[0].location[1]//32))
+            
             '''
             if msgArgs[0].name == 'SSight':
-                self.sightActors[sentFrom] = msgArgs[0]
+                self.sightActors[id(sentFrom)] = sentFrom
             '''
-            
+                    
             if msgArgs[0].name == 'SClient':
                 if self._client:
                     raise RuntimeError('Second SClient try to join.')

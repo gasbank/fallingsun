@@ -62,7 +62,7 @@ class SPrey(SActor):
     def changeIntention(self, intention):
         
         if intention == 'ROAMING':
-            self.velocity = 5
+            self.velocity = 30
         elif intention == 'RESTING':
             self.velocity = 0
             self.restFor = 6 + random.random() * 6

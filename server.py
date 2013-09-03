@@ -29,7 +29,7 @@ class SServer(SActor):
             uninstall()
     
     def startServerLoopInner(self):
-        address = "127.0.0.1", 3000
+        address = "", 3000
         
         listenSocket = socket.socket(AF_INET, SOCK_STREAM)
         listenSocket.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)

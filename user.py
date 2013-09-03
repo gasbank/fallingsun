@@ -15,10 +15,10 @@ class SUser(SNetActor):
         self.sight = None
         self.pawn = None
         
-        sightX, sightY = 5, 5
+        sightX, sightY = 4, 4
         self.sight = SSight(world, location=(32 * sightX, 32* sightY),
                             instanceName=instanceName+'Sight',
-                            sightRange=3, user=self.channel).channel
+                            sightRange=2, user=self.channel).channel
         
         self.pawn = SPrey(world, location=(32*sightX+16,32*sightY+16),
                           velocity=0, angle=90,

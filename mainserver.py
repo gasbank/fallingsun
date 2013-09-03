@@ -12,12 +12,12 @@ def main():
     
     logging.getLogger().setLevel(logging.INFO)
     
-    worldActor = SWorld(width=10, height=10)
+    worldActor = SWorld(width=8, height=8, disableCollisionCheck=True)
     world = worldActor.channel
     
     SDisplayWindow(world, windowTitle='Falling Sun Server')
 
-    for i in range(1):
+    for i in range(500):
         SPrey(world, location=(32 * 0 + 16, 32 * 0 + 16), velocity=20,
               angle=90, instanceName='Prey%d'%i, stamina=100, maxStamina=100,
               intention='ROAMING')

@@ -33,7 +33,7 @@ class SWebSocketServer(SActor):
             uninstall()
     
     def startServerLoopInner(self):
-        address = "127.0.0.1", 3001
+        address = "", 3001
         
         listenSocket = socket.socket(AF_INET, SOCK_STREAM)
         listenSocket.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)

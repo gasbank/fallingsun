@@ -10,7 +10,7 @@ def main():
     
     logging.getLogger().setLevel(logging.INFO)
     
-    worldActor = SWorld(width=10, height=10)
+    worldActor = SWorld(width=8, height=8)
     world = worldActor.channel
 
     client = SClient(world, 'Client', ('127.0.0.1', 3000)).channel
