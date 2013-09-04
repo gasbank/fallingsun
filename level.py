@@ -6,13 +6,15 @@ class TileLevel(object):
     TREE = 3
     
     def __init__(self, width = 0, height = 0, useTestData=False):
-        self.width = width
-        self.height = height
-        self.terrain = self.get2DArray(width, height)
-        self.building = self.get2DArray(width, height)
-        self.collision = self.get2DArray(width, height)
         
-        if useTestData: self.fillWithTestData()
+        if useTestData:
+            self.fillWithTestData()
+        else:
+            self.terrain = self.getZeroed2DArray(width, height)
+            self.building = self.getZeroed2DArray(width, height)
+            self.collision = self.getZeroed2DArray(width, height)
+            
+            self.updateLevelSize()
         
         #self.placeTree(11, 7)
         #self.placeTree(15, 8)
@@ -20,6 +22,13 @@ class TileLevel(object):
         #self.placeTent(10,13)
         #self.placeTent(16,17)
         #self.placeTent(16,17)
+    
+    def getCellData(self, tx, ty):
+        t = self.terrain[ty][tx] if 0<=tx<self.width and 0<=ty<self.height else 1
+        b = self.building[ty][tx] if 0<=tx<self.width and 0<=ty<self.height else 0
+        c = self.collision[ty][tx] if 0<=tx<self.width and 0<=ty<self.height else 0
+        
+        return t, b, c
     
     def toTileIndex(self, location):
         return (int(location[0]//32), int(location[1]//32))
@@ -45,7 +54,6 @@ class TileLevel(object):
             for i in range(tx-originOffset[0]+collisionRect[0],
                            tx-originOffset[0]+collisionRect[0]+collisionRect[2]):
                 self.collision[j][i] = 1 if building > 0 else 0
-    
     
     def placeTree(self, tx, ty, place=True):
         
@@ -141,8 +149,13 @@ class TileLevel(object):
         
         self.updateLevelSize()
         
-    def get2DArray(self, width, height, newValue=0):
-        return [[0]*width]*height
+    def getZeroed2DArray(self, width, height):
+        
+        r = []
+        for _ in range(height):
+            r.append([0]*width)
+        
+        return r
     
     def isMovable(self, i, j):
         try:
@@ -221,17 +234,32 @@ class TileLevel(object):
             pc = pc.expandedFrom
         
         return path
+    
+    def getNeighborSameString(self, tx, ty, c):
+        
+        r = []
+        for nb in TileNeighborhood4(self.width, self.height, tx, ty,
+                                    noCheck=True):
+            t, _, _ = self.getCellData(*nb)
+            r.append(int(t == c))
+        
+        return '%d%d%d%d' % tuple(r)
+
+DEFAULT_TILE_NEIGHBORHOOD4_SEQ = ((0,-1),(0,1),(-1,0),(1,0))
 
 class TileNeighborhood4(object):
     # Iteration sequence: Top -> Bottom -> Left -> Right
-    seq = ((0,-1),(0,1),(-1,0),(1,0))
     
-    def __init__(self, width, height, i, j):
+    def __init__(self, width, height, i, j, seq=DEFAULT_TILE_NEIGHBORHOOD4_SEQ,
+                 noneOnInvalid=False, noCheck=False):
         self.width = width
         self.height = height
         self.i = i
         self.j = j
-        self.c = -1 # Top -> Bottom -> Left -> Right
+        self.c = -1 # Top -> Bottom -> Left -> Right if default seq used.
+        self.seq = seq
+        self.noneOnInvalid = noneOnInvalid
+        self.noCheck = noCheck
         
     def __iter__(self):
         return self
@@ -240,13 +268,15 @@ class TileNeighborhood4(object):
         
         self.c = self.c + 1
         
-        if self.c >= len(TileNeighborhood4.seq):
+        if self.c >= len(self.seq):
             raise StopIteration()
         
-        i = self.i + TileNeighborhood4.seq[self.c][0]
-        j = self.j + TileNeighborhood4.seq[self.c][1]
-        if 0 <= i < self.width and 0 <= j < self.height:
+        i = self.i + self.seq[self.c][0]
+        j = self.j + self.seq[self.c][1]
+        if self.noCheck or (0 <= i < self.width and 0 <= j < self.height):
             return (i, j)
+        elif self.noneOnInvalid:
+            return None
         else:
             return self.next()
         

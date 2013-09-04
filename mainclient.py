@@ -10,10 +10,10 @@ def main():
     
     logging.getLogger().setLevel(logging.INFO)
     
-    worldActor = SWorld(width=8, height=8)
+    worldActor = SWorld(width=8, height=8, disableCollisionCheck=True)
     world = worldActor.channel
 
-    client = SClient(world, 'Client', ('127.0.0.1', 3000)).channel
+    client = SClient(world, 'Client', ('14.49.42.133', 3000)).channel
     
     SDisplayWindow(world, windowTitle='Falling Sun Client', client=client)
 

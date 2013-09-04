@@ -8,6 +8,7 @@ from home import SHome
 import level
 import weakref
 import time
+import kdtree
 
 class WorldState:
     def __init__(self, updateRate, time, tileData):
@@ -15,7 +16,8 @@ class WorldState:
         self.time = time
         self.actors = []
         self.tileData = tileData
-        
+
+class KdActorNode(kdtree.KdNode): pass        
         
 class SWorld(SActor):
     def __init__(self, spawnTreeInterval=0, exitOnNoHarvestables=False,
@@ -26,9 +28,11 @@ class SWorld(SActor):
         
         # Actor dictionaries
         self.registeredActors = {}
+        self.kdActorTree = kdtree.KdTree(searchSpace=kdtree.Rect(0,0,10**9,10**9))
         self.aboutToBeKilledActors = {}
         self.tickDisabledActors = {}
         #self.sightActors = weakref.WeakValueDictionary() #{}
+        
         
         # Tick
         self.maxUpdateRate = 30
@@ -145,10 +149,11 @@ class SWorld(SActor):
         for actor in self.registeredActors:
             if self.registeredActors[actor].public:
                 ws.actors.append((actor, self.registeredActors[actor]))
-                
-        for actor in list(self.registeredActors):
+        
+        for actor, prop in self.registeredActors.iteritems():
             self.debug('%s --WORLD_STATE--> %s' % (self.channel, actor))
-            actor.send((self.channel, "WORLD_STATE", ws))
+            actor.send((self.channel, "WORLD_STATE", ws, prop))
+        
 
     def checkForGatherings(self):
         #print "HAT2!"
@@ -258,7 +263,7 @@ class SWorld(SActor):
         self.updateActorPosition()
         self.sendWorldStateToActors(startTime)
         #self.sendNeighborEnterLeaveToActors()
-        self.sendSightNeighborEnterLeaveToActors()
+        #self.sendSightNeighborEnterLeaveToActors()
 
         if 0 < self.spawnTreeInterval < startTime - self.lastSpawnTreeTime:
             self.spawnTree()
@@ -296,39 +301,55 @@ class SWorld(SActor):
             
         self.info('The world tick loop about to exit...')
         
+
+    def handleJoin(self, actor, prop):
+        self.registeredActors[actor] = prop
+            
+        if prop.staticSprite:
+            
+            if prop.name == 'STree':
+                
+                self.tileData.placeTree(*prop.tileLoc)
+                
+            elif prop.name == 'SHome':
+                
+                self.tileData.placeTent(*prop.tileLoc)
+        
+        '''
+        if msgArgs[0].name == 'SSight':
+            self.sightActors[id(sentFrom)] = sentFrom
+        '''
+                
+        if prop.name == 'SClient':
+            if self._client:
+                raise RuntimeError('Second SClient try to join.')
+            self._client = actor
+        
+        if prop.name == 'SServer':
+            if self._server:
+                raise RuntimeError('Second SServer try to join.')
+            self._server = actor
+
+        if prop.public and prop.physical:
+            #print actor, prop.location
+            node = KdActorNode(prop.location + (weakref.ref(actor),))
+            self.kdActorTree.insertNode(node)
+        
+        self.info('%s joined the world.' % prop.instanceName)
+    
+    
+    def handleQueryRectRange(self, cenLoc, r):
+        Q = kdtree.Range(cenLoc[0]-r*32, cenLoc[1]-r*32, 32*(2*r+1), 32*(2*r+1))
+        points = self.kdActorTree.rangePoints(Q)
+        
+        for p in points:
+            print p[0],p[1],str(p[2]())
+    
+    
     def defaultMessageAction(self, args):
         sentFrom, msg, msgArgs = args[0], args[1], args[2:]
         if msg == 'JOIN':
-            self.registeredActors[sentFrom] = msgArgs[0]
-            
-            if msgArgs[0].staticSprite:
-                
-                if msgArgs[0].name == 'STree':
-                    
-                    self.tileData.placeTree(int(msgArgs[0].location[0]//32),
-                                            int(msgArgs[0].location[1]//32))
-                    
-                elif msgArgs[0].name == 'SHome':
-                    
-                    self.tileData.placeTent(int(msgArgs[0].location[0]//32),
-                                            int(msgArgs[0].location[1]//32))
-            
-            '''
-            if msgArgs[0].name == 'SSight':
-                self.sightActors[id(sentFrom)] = sentFrom
-            '''
-                    
-            if msgArgs[0].name == 'SClient':
-                if self._client:
-                    raise RuntimeError('Second SClient try to join.')
-                self._client = sentFrom
-            
-            if msgArgs[0].name == 'SServer':
-                if self._server:
-                    raise RuntimeError('Second SServer try to join.')
-                self._server = sentFrom
-            
-            self.info('%s joined the world.' % msgArgs[0].instanceName)
+            self.handleJoin(sentFrom, msgArgs[0])
             
         elif msg == 'UPDATE_VECTOR':
             oldAngle = self.registeredActors[sentFrom].angle
@@ -385,6 +406,12 @@ class SWorld(SActor):
                 if p.name == 'SUser':
                     self.debug('%s sent chat message %s to %s.' % (sentFrom,a,msgArgs[0]))
                     a.send((sentFrom, 'CHAT', msgArgs[0]))
+        elif msg == 'REQUEST_TELEPORT':
+            self.teleportActor(sentFrom, msgArgs[0])
+        elif msg == 'REQUEST_RELATIVE_TELEPORT':
+            self.relativeTeleportActor(sentFrom, msgArgs[0])
+        elif msg == 'QUERY_RECT_RANGE':
+            self.handleQueryRectRange(*msgArgs)
         else:
             raise RuntimeError("ERROR: The world got unknown message %s sent from %s"
                                % (msg, sentFrom));
@@ -406,10 +433,13 @@ class SWorld(SActor):
             
     def getharvestables(self):
         return [k for k,v in self.registeredActors.items() if v.harvestable]
-
     
     def teleportActor(self, actor, location):
         self.registeredActors[actor].location = location
-    
-    
-            
+        
+    def relativeTeleportActor(self, actor, dLoc):
+        loc = self.registeredActors[actor].location
+        newLoc = (loc[0] + dLoc[0], loc[1] + dLoc[1])
+        self.registeredActors[actor].location = newLoc 
+        
+        actor.send((self.channel, 'TELEPORTED', newLoc))

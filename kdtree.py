@@ -9,7 +9,7 @@ DIM = 2
 class KdNode(object):
     def __init__(self, x):
         assert type(x) == tuple
-        assert len(x) == DIM
+        assert len(x) >= DIM
         
         self.data = x
         self.left = None
@@ -81,7 +81,7 @@ class Rect(object):
     
     def trimLeft(self, cd, p):
         
-        assert len(p) == 2
+        assert len(p) >= 2
         assert self.x <= p[0] <= self.x+self.w
         assert self.y <= p[1] <= self.y+self.h
         
@@ -94,7 +94,7 @@ class Rect(object):
     
     def trimRight(self, cd, p):
         
-        assert len(p) == 2
+        assert len(p) >= 2
         assert self.x <= p[0] <= self.x2
         assert self.y <= p[1] <= self.y2
         
@@ -177,6 +177,13 @@ class KdTree(object):
         
         self._root = self._insert(x, self._root, 0)
         
+    def insertNode(self, tt):
+        
+        if not self._searchSpace.containsPoint(tt.data):
+            raise OutOfSearchSpaceError(tt.data, self._searchSpace)
+        
+        self._root = self._insertNode(tt, self._root, 0)
+        
     def nearestNeighbor(self, q):
         closest = self._nearNeigh(q, self._root, 0, self._getRootRect(),
                                   Close())
@@ -190,8 +197,8 @@ class KdTree(object):
         _, points = self._range(Q, self._root, 0, self._getRootRect(), True)
         return points
     
-    def deleteNode(self, x):
-        self._root = self._deleteNode(x, self._root, 0)
+    def delete(self, x):
+        self._root = self._delete(x, self._root, 0)
         
     def getMaxDepth(self):
         if self._root: return self._root.getMaxDepth()
@@ -209,6 +216,17 @@ class KdTree(object):
             t.left = self._insert(x, t.left, (cd+1)%DIM)
         else:
             t.right = self._insert(x, t.right, (cd+1)%DIM)
+        return t
+    
+    def _insertNode(self, tt, t, cd):
+        if t is None:
+            t = tt
+        elif tt.data is t.data:
+            raise RuntimeError('Duplicated data')
+        elif tt.data[cd] < t.data[cd]:
+            t.left = self._insertNode(tt, t.left, (cd+1)%DIM)
+        else:
+            t.right = self._insertNode(tt, t.right, (cd+1)%DIM)
         return t
     
     def _nearNeigh(self, q, t, cd, r, close):
@@ -265,23 +283,23 @@ class KdTree(object):
         
         return c, points
             
-    def _deleteNode(self, x, t, cd):
+    def _delete(self, x, t, cd):
         if t is None:
             raise RuntimeError('Invalid node to delete.')
         elif x == t.data:
             if t.right:
                 t.data = t.right.findMin(cd, (cd+1)%DIM)
-                t.right = self._deleteNode(t.data, t.right, (cd+1)%DIM)
+                t.right = self._delete(t.data, t.right, (cd+1)%DIM)
             elif t.left:
                 t.data = t.left.findMin(cd, (cd+1)%DIM)
-                t.right = self._deleteNode(t.data, t.left, (cd+1)%DIM)
+                t.right = self._delete(t.data, t.left, (cd+1)%DIM)
                 t.left = None
             else:
                 t = None
         elif x[cd] < t.data[cd]:
-            t.left = self._deleteNode(x, t.left, (cd+1)%DIM)
+            t.left = self._delete(x, t.left, (cd+1)%DIM)
         else:
-            t.right = self._deleteNode(x, t.right, (cd+1)%DIM)
+            t.right = self._delete(x, t.right, (cd+1)%DIM)
         
         return t
         
@@ -330,6 +348,20 @@ class KdTreeTestCase(unittest.TestCase):
         self.assertRaises(OutOfSearchSpaceError, t.insert, (100000,0))
         self.assertRaises(OutOfSearchSpaceError, t.insert, (0,-100000))
         self.assertRaises(OutOfSearchSpaceError, t.insert, (999999,100000))
+        
+    def testInsertionWithCustomData(self):
+        t = KdTree()
+        
+        n = KdNode((1,2,[1,2,3]))
+        t.insertNode(n)
+        self.assertEqual([(1,2,[1,2,3])], t.getAllPoints())
+        
+        n = KdNode((3,4))
+        t.insertNode(n)
+        self.assertEqual([(1,2,[1,2,3]),(3,4)], t.getAllPoints())
+        
+        t.insert((5,6,'hey'))
+        self.assertEqual([(1,2,[1,2,3]),(3,4),(5,6,'hey')], t.getAllPoints())
         
     def testFindMin(self):
         t = KdTree((10,20))
@@ -506,27 +538,27 @@ class KdTreeTestCase(unittest.TestCase):
         
         self.assertEqual(set(points), set(t.getAllPoints()))
         
-        t.deleteNode((10,20))
+        t.delete((10,20))
         self.assertEqual(set(points)-set([(10,20)]),
                          set(t.getAllPoints()))
         
-        t.deleteNode((0,7))
+        t.delete((0,7))
         self.assertEqual(set(points)-set([(10,20),(0,7)]),
                          set(t.getAllPoints()))
         
-        t.deleteNode((5,1))
+        t.delete((5,1))
         self.assertEqual(set(points)-set([(10,20),(0,7),(5,1)]),
                          set(t.getAllPoints()))
         
-        t.deleteNode((20,5))
+        t.delete((20,5))
         self.assertEqual(set(points)-set([(10,20),(0,7),(5,1),(20,5)]),
                          set(t.getAllPoints()))
         
-        t.deleteNode((5,10))
+        t.delete((5,10))
         self.assertEqual(set(points)-set([(10,20),(0,7),(5,1),(20,5),(5,10)]),
                          set(t.getAllPoints()))
         
-        t.deleteNode((25,20))
+        t.delete((25,20))
         self.assertEqual(set([]), set(t.getAllPoints()))
         
         t.insert((0,0))
@@ -535,7 +567,7 @@ class KdTreeTestCase(unittest.TestCase):
         t.insert((1,0))
         self.assertEqual(set([(0,0),(1,0)]), set(t.getAllPoints()))
         
-        t.deleteNode((0,0))
+        t.delete((0,0))
         self.assertEqual(set([(1,0)]), set(t.getAllPoints()))
         
 def getRandomPoint():
@@ -557,10 +589,12 @@ if __name__ == '__main__':
     
     '''
     === Nearest neighbor search ===
-    '''    
+    '''
+    t0 = time.clock()    
     points = list(set([getRandomPoint() for x in range(500)]))
     t = KdTree(points=points)
-    print '# of points', len(points)
+    elapsed = time.clock() - t0
+    print 'kd-tree construction:', elapsed, 'sec elapsed. # of points', len(points)
     
     t0 = time.clock()
     nq = 10 # query count
@@ -579,7 +613,7 @@ if __name__ == '__main__':
             print 'Querying...', i
         '''
     elapsed = time.clock() - t0
-    print 'kd-tree:', elapsed, 'seconds elapsed.', elapsed/nq, 'sec per query.'
+    print 'kd-tree nn query x', nq, ':', elapsed, 'seconds elapsed.', elapsed/nq, 'sec per query.'
     
     '''
     === Nearest neighbor (bruteforce) for the comparison ===
@@ -590,7 +624,7 @@ if __name__ == '__main__':
         r1 = min(points, key=lambda x: distance(x,q))
     
     elapsed = time.clock() - t0
-    print 'bruteforce:', elapsed, 'seconds elapsed.', elapsed/nq, 'sec per query.'
+    print 'bruteforce nn query:', elapsed, 'seconds elapsed.', elapsed/nq, 'sec per query.'
     
     '''
     === Range query ===
@@ -652,7 +686,7 @@ if __name__ == '__main__':
             points.remove(p)
             
             tt0 = time.time()
-            t.deleteNode(p)
+            t.delete(p)
             elapsedList.append(time.time() - tt0)
             
             delCount += 1

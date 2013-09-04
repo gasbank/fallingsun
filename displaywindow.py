@@ -3,8 +3,19 @@ from actor import SActor, ActorProperties
 import pygame
 import os
 
-swidth = 800
-sheight = 800
+TS = 32  # Tile Size
+STS = 16  # Sub-Tile Size
+EAST, WEST, SOUTH, NORTH = 0,1,2,3    
+            
+ARROW_KEY_MAPPING = {pygame.K_RIGHT:'E',
+                     pygame.K_LEFT:'W',
+                     pygame.K_UP:'N',
+                     pygame.K_DOWN:'S'}
+
+KEYPAD_KEY_MAPPING = {pygame.K_KP4:WEST,
+                      pygame.K_KP6:EAST,
+                      pygame.K_KP8:NORTH,
+                      pygame.K_KP2:SOUTH}
 
 class FadeoutText(object):
     def __init__(self, font, text, location, maxAge=5.0, color=(0,0,0),
@@ -33,19 +44,42 @@ class FadeoutText(object):
             screen = pygame.display.get_surface()
             screen.blit(self._label, self.location)
             self._age += deltaTime
-    
+
         
 class SDisplayWindow(SActor):
-    def __init__(self, world, windowTitle='Falling Sun', client=None):
+    @property
+    def camOrigin(self):
+        return (-self.camX,-self.camY)
+    @property
+    def camOriginTile(self):
+        return (int(-self.camX//TS),int(-self.camY//TS))
+    @property
+    def camLastTile(self):
+        return (int((-self.camX+self.swidth)//TS),
+                int((-self.camY+self.sheight)//TS))
+    
+    def __init__(self, world, windowTitle='Falling Sun', client=None,
+                 swidth=32*10, sheight=32*10):
         SActor.__init__(self, 'DisplayWindow')
         self.frame = 0
         self.world = world
         self.icons = {}
         self.time = 0
         self._client = client
+        self.swidth = swidth
+        self.sheight = sheight
+        
+        self.camX = self.camY = 0
+        self.camdX = self.camdY = 0
+        self.camKey = [False]*4
+        
+        VPX = 8
+        VPY = 8
         
         pygame.init()
         pygame.display.set_caption(windowTitle)
+        pygame.display.set_mode((swidth, sheight))
+        self.mainSurface = pygame.Surface((32*VPX,32*VPY))
         
         self._fadeoutTexts = []
         self.font = pygame.font.Font('C:\windows\Fonts\GULIM.TTC', 10)
@@ -74,11 +108,12 @@ class SDisplayWindow(SActor):
             self._fadeoutTexts.append(FadeoutText(self.bigFont, msgArgs[0],
                                                   msgArgs[1]))
         elif msg == 'WORLD_SIZE':
+            '''
             global swidth, sheight
             swidth = (msgArgs[0] + 1) * 32
             sheight = (msgArgs[1] + 1) * 32
+            '''
 
-            pygame.display.set_mode((swidth, sheight))
             icon = pygame.image.load(os.path.join('data', 'fighter.ico')).convert_alpha()
             pygame.display.set_icon(icon)
             
@@ -96,26 +131,30 @@ class SDisplayWindow(SActor):
             return surface
     
 
-    def drawAutotiles(self, screen, ws, tile, i, j, neighbors, anim=False):
-        TS = 32  # Tile Size
-        STS = 16  # Sub-Tile Size
+    def drawAutotiles(self, screen, ws, tile, i, j, anim, c, camOff):
+        
+        neighbors = ws.tileData.getNeighborSameString(j, i, c)
         
         animFrame = (self.frame / 80) % 4 if anim else 0
         
+        #self.blitTile(screen, self.waterTile, (tx,ty), camOff, area)
+        
+        blitCalls = []
+        
         if neighbors == '0000':
             area = (TS * 0, TS * 0, TS, TS)
-            screen.blit(tile, (TS * j, TS * i), area)
+            blitCalls.append((  (TS * j, TS * i), area))
             
         # <--->
         elif neighbors == '1000':
-            screen.blit(tile, (TS * j    , TS * i), (3 * TS * animFrame + TS * 0 + STS * 0, TS * 3 + STS * 0, STS, STS * 2))
-            screen.blit(tile, (TS * j + STS, TS * i), (3 * TS * animFrame + TS * 2 + STS * 1, TS * 3 + STS * 0, STS, STS * 2))
+            blitCalls.append(((TS * j    , TS * i), (3 * TS * animFrame + TS * 0 + STS * 0, TS * 3 + STS * 0, STS, STS * 2)))
+            blitCalls.append(((TS * j + STS, TS * i), (3 * TS * animFrame + TS * 2 + STS * 1, TS * 3 + STS * 0, STS, STS * 2)))
         elif neighbors == '0100':
-            screen.blit(tile, (TS * j    , TS * i), (3 * TS * animFrame + TS * 0 + STS * 0, TS * 1 + STS * 0, STS, STS * 2))
-            screen.blit(tile, (TS * j + STS, TS * i), (3 * TS * animFrame + TS * 2 + STS * 1, TS * 1 + STS * 0, STS, STS * 2))
+            blitCalls.append(((TS * j    , TS * i), (3 * TS * animFrame + TS * 0 + STS * 0, TS * 1 + STS * 0, STS, STS * 2)))
+            blitCalls.append(((TS * j + STS, TS * i), (3 * TS * animFrame + TS * 2 + STS * 1, TS * 1 + STS * 0, STS, STS * 2)))
         elif neighbors == '1100':
-            screen.blit(tile, (TS * j    , TS * i), (3 * TS * animFrame + TS * 0 + STS * 0, TS * 2 + STS * 0, STS, STS * 2))
-            screen.blit(tile, (TS * j + STS, TS * i), (3 * TS * animFrame + TS * 2 + STS * 1, TS * 2 + STS * 0, STS, STS * 2))
+            blitCalls.append(((TS * j    , TS * i), (3 * TS * animFrame + TS * 0 + STS * 0, TS * 2 + STS * 0, STS, STS * 2)))
+            blitCalls.append(((TS * j + STS, TS * i), (3 * TS * animFrame + TS * 2 + STS * 1, TS * 2 + STS * 0, STS, STS * 2)))
             
         # A
         # |
@@ -123,50 +162,50 @@ class SDisplayWindow(SActor):
         # |
         # V
         elif neighbors == '0010':
-            screen.blit(tile, (TS * j    , TS * i), (3 * TS * animFrame + TS * 2 + STS * 0, TS * 1 + STS * 0, STS * 2, STS))
-            screen.blit(tile, (TS * j    , TS * i + STS), (3 * TS * animFrame + TS * 2 + STS * 0, TS * 3 + STS * 1, STS * 2, STS))
+            blitCalls.append(((TS * j    , TS * i), (3 * TS * animFrame + TS * 2 + STS * 0, TS * 1 + STS * 0, STS * 2, STS)))
+            blitCalls.append(((TS * j    , TS * i + STS), (3 * TS * animFrame + TS * 2 + STS * 0, TS * 3 + STS * 1, STS * 2, STS)))
         elif neighbors == '0001':
-            screen.blit(tile, (TS * j    , TS * i), (3 * TS * animFrame + TS * 0 + STS * 0, TS * 1 + STS * 0, STS * 2, STS))
-            screen.blit(tile, (TS * j    , TS * i + STS), (3 * TS * animFrame + TS * 0 + STS * 0, TS * 3 + STS * 1, STS * 2, STS))
+            blitCalls.append(((TS * j    , TS * i), (3 * TS * animFrame + TS * 0 + STS * 0, TS * 1 + STS * 0, STS * 2, STS)))
+            blitCalls.append(((TS * j    , TS * i + STS), (3 * TS * animFrame + TS * 0 + STS * 0, TS * 3 + STS * 1, STS * 2, STS)))
         elif neighbors == '0011':
-            screen.blit(tile, (TS * j    , TS * i), (3 * TS * animFrame + TS * 1 + STS * 0, TS * 1 + STS * 0, STS * 2, STS))
-            screen.blit(tile, (TS * j    , TS * i + STS), (3 * TS * animFrame + TS * 1 + STS * 0, TS * 3 + STS * 1, STS * 2, STS))
+            blitCalls.append(((TS * j    , TS * i), (3 * TS * animFrame + TS * 1 + STS * 0, TS * 1 + STS * 0, STS * 2, STS)))
+            blitCalls.append(((TS * j    , TS * i + STS), (3 * TS * animFrame + TS * 1 + STS * 0, TS * 3 + STS * 1, STS * 2, STS)))
         
         # <---+
         #     |
         #     V
         elif neighbors == '0110':
-            screen.blit(tile, (TS * j    , TS * i), (3 * TS * animFrame + TS * 2 + STS * 0, TS * 1 + STS * 0, STS * 1, STS))
-            screen.blit(tile, (TS * j + STS, TS * i), (3 * TS * animFrame + TS * 2 + STS * 1, TS * 1 + STS * 0, STS * 1, STS))
-            screen.blit(tile, (TS * j    , TS * i + STS), (3 * TS * animFrame + TS * 2 + STS * 0, TS * 0 + STS * 1, STS * 1, STS))  # ##
-            screen.blit(tile, (TS * j + STS, TS * i + STS), (3 * TS * animFrame + TS * 2 + STS * 1, TS * 1 + STS * 1, STS * 1, STS))
+            blitCalls.append(((TS * j    , TS * i), (3 * TS * animFrame + TS * 2 + STS * 0, TS * 1 + STS * 0, STS * 1, STS)))
+            blitCalls.append(((TS * j + STS, TS * i), (3 * TS * animFrame + TS * 2 + STS * 1, TS * 1 + STS * 0, STS * 1, STS)))
+            blitCalls.append(((TS * j    , TS * i + STS), (3 * TS * animFrame + TS * 2 + STS * 0, TS * 0 + STS * 1, STS * 1, STS))) # ##
+            blitCalls.append(((TS * j + STS, TS * i + STS), (3 * TS * animFrame + TS * 2 + STS * 1, TS * 1 + STS * 1, STS * 1, STS)))
 
         # +--->
         # |
         # V
         elif neighbors == '0101':
-            screen.blit(tile, (TS * j    , TS * i), (3 * TS * animFrame + TS * 0 + STS * 0, TS * 1 + STS * 0, STS * 1, STS))
-            screen.blit(tile, (TS * j + STS, TS * i), (3 * TS * animFrame + TS * 0 + STS * 1, TS * 1 + STS * 0, STS * 1, STS))
-            screen.blit(tile, (TS * j    , TS * i + STS), (3 * TS * animFrame + TS * 0 + STS * 0, TS * 1 + STS * 1, STS * 1, STS))
-            screen.blit(tile, (TS * j + STS, TS * i + STS), (3 * TS * animFrame + TS * 2 + STS * 1, TS * 0 + STS * 1, STS * 1, STS))  # ##
+            blitCalls.append(((TS * j    , TS * i), (3 * TS * animFrame + TS * 0 + STS * 0, TS * 1 + STS * 0, STS * 1, STS)))
+            blitCalls.append(((TS * j + STS, TS * i), (3 * TS * animFrame + TS * 0 + STS * 1, TS * 1 + STS * 0, STS * 1, STS)))
+            blitCalls.append(((TS * j    , TS * i + STS), (3 * TS * animFrame + TS * 0 + STS * 0, TS * 1 + STS * 1, STS * 1, STS)))
+            blitCalls.append(((TS * j + STS, TS * i + STS), (3 * TS * animFrame + TS * 2 + STS * 1, TS * 0 + STS * 1, STS * 1, STS)))  # ##
             
         # A
         # |
         # +--->
         elif neighbors == '1001':
-            screen.blit(tile, (TS * j    , TS * i), (3 * TS * animFrame + TS * 0 + STS * 0, TS * 3 + STS * 0, STS * 1, STS))
-            screen.blit(tile, (TS * j + STS, TS * i), (3 * TS * animFrame + TS * 2 + STS * 1, TS * 0 + STS * 0, STS * 1, STS))  # ##
-            screen.blit(tile, (TS * j    , TS * i + STS), (3 * TS * animFrame + TS * 0 + STS * 0, TS * 3 + STS * 1, STS * 1, STS))
-            screen.blit(tile, (TS * j + STS, TS * i + STS), (3 * TS * animFrame + TS * 0 + STS * 1, TS * 3 + STS * 1, STS * 1, STS))
+            blitCalls.append(((TS * j    , TS * i), (3 * TS * animFrame + TS * 0 + STS * 0, TS * 3 + STS * 0, STS * 1, STS)))
+            blitCalls.append(((TS * j + STS, TS * i), (3 * TS * animFrame + TS * 2 + STS * 1, TS * 0 + STS * 0, STS * 1, STS)))  # ##
+            blitCalls.append(((TS * j    , TS * i + STS), (3 * TS * animFrame + TS * 0 + STS * 0, TS * 3 + STS * 1, STS * 1, STS)))
+            blitCalls.append(((TS * j + STS, TS * i + STS), (3 * TS * animFrame + TS * 0 + STS * 1, TS * 3 + STS * 1, STS * 1, STS)))
             
         #     A
         #     |
         # <---+
         elif neighbors == '1010':
-            screen.blit(tile, (TS * j    , TS * i), (3 * TS * animFrame + TS * 2 + STS * 0, TS * 0 + STS * 0, STS * 1, STS))  # ##
-            screen.blit(tile, (TS * j + STS, TS * i), (3 * TS * animFrame + TS * 2 + STS * 1, TS * 3 + STS * 0, STS * 1, STS))
-            screen.blit(tile, (TS * j    , TS * i + STS), (3 * TS * animFrame + TS * 2 + STS * 0, TS * 3 + STS * 1, STS * 1, STS))
-            screen.blit(tile, (TS * j + STS, TS * i + STS), (3 * TS * animFrame + TS * 2 + STS * 1, TS * 3 + STS * 1, STS * 1, STS))
+            blitCalls.append(((TS * j    , TS * i), (3 * TS * animFrame + TS * 2 + STS * 0, TS * 0 + STS * 0, STS * 1, STS)))  # ##
+            blitCalls.append(((TS * j + STS, TS * i), (3 * TS * animFrame + TS * 2 + STS * 1, TS * 3 + STS * 0, STS * 1, STS)))
+            blitCalls.append(((TS * j    , TS * i + STS), (3 * TS * animFrame + TS * 2 + STS * 0, TS * 3 + STS * 1, STS * 1, STS)))
+            blitCalls.append(((TS * j + STS, TS * i + STS), (3 * TS * animFrame + TS * 2 + STS * 1, TS * 3 + STS * 1, STS * 1, STS)))
             
         
         #     A
@@ -175,10 +214,10 @@ class SDisplayWindow(SActor):
         #     |
         #     V
         elif neighbors == '1110':
-            screen.blit(tile, (TS * j    , TS * i), (3 * TS * animFrame + TS * 2 + STS * 0, TS * 0 + STS * 0, STS * 1, STS))  # ##
-            screen.blit(tile, (TS * j + STS, TS * i), (3 * TS * animFrame + TS * 2 + STS * 1, TS * 2 + STS * 0, STS * 1, STS))
-            screen.blit(tile, (TS * j    , TS * i + STS), (3 * TS * animFrame + TS * 2 + STS * 0, TS * 0 + STS * 1, STS * 1, STS))  # ##
-            screen.blit(tile, (TS * j + STS, TS * i + STS), (3 * TS * animFrame + TS * 2 + STS * 1, TS * 2 + STS * 1, STS * 1, STS))    
+            blitCalls.append(((TS * j    , TS * i), (3 * TS * animFrame + TS * 2 + STS * 0, TS * 0 + STS * 0, STS * 1, STS)))  # ##
+            blitCalls.append(((TS * j + STS, TS * i), (3 * TS * animFrame + TS * 2 + STS * 1, TS * 2 + STS * 0, STS * 1, STS)))
+            blitCalls.append(((TS * j    , TS * i + STS), (3 * TS * animFrame + TS * 2 + STS * 0, TS * 0 + STS * 1, STS * 1, STS)))  # ##
+            blitCalls.append(((TS * j + STS, TS * i + STS), (3 * TS * animFrame + TS * 2 + STS * 1, TS * 2 + STS * 1, STS * 1, STS)))    
             
         # A
         # |
@@ -186,28 +225,28 @@ class SDisplayWindow(SActor):
         # |
         # V
         elif neighbors == '1101':
-            screen.blit(tile, (TS * j    , TS * i), (3 * TS * animFrame + TS * 0 + STS * 0, TS * 2 + STS * 0, STS * 1, STS))
-            screen.blit(tile, (TS * j + STS, TS * i), (3 * TS * animFrame + TS * 2 + STS * 1, TS * 0 + STS * 0, STS * 1, STS))  # ##
-            screen.blit(tile, (TS * j    , TS * i + STS), (3 * TS * animFrame + TS * 0 + STS * 0, TS * 2 + STS * 1, STS * 1, STS))
-            screen.blit(tile, (TS * j + STS, TS * i + STS), (3 * TS * animFrame + TS * 2 + STS * 1, TS * 0 + STS * 1, STS * 1, STS))  # ##
+            blitCalls.append(((TS * j    , TS * i), (3 * TS * animFrame + TS * 0 + STS * 0, TS * 2 + STS * 0, STS * 1, STS)))
+            blitCalls.append(((TS * j + STS, TS * i), (3 * TS * animFrame + TS * 2 + STS * 1, TS * 0 + STS * 0, STS * 1, STS)))  # ##
+            blitCalls.append(((TS * j    , TS * i + STS), (3 * TS * animFrame + TS * 0 + STS * 0, TS * 2 + STS * 1, STS * 1, STS)))
+            blitCalls.append(((TS * j + STS, TS * i + STS), (3 * TS * animFrame + TS * 2 + STS * 1, TS * 0 + STS * 1, STS * 1, STS)))  # ##
         
         #    A
         #    |
         # <--+-->
         elif neighbors == '1011':
-            screen.blit(tile, (TS * j    , TS * i), (3 * TS * animFrame + TS * 2 + STS * 0, TS * 0 + STS * 0, STS * 1, STS))  # ##
-            screen.blit(tile, (TS * j + STS, TS * i), (3 * TS * animFrame + TS * 2 + STS * 1, TS * 0 + STS * 0, STS * 1, STS))  # ##
-            screen.blit(tile, (TS * j    , TS * i + STS), (3 * TS * animFrame + TS * 1 + STS * 0, TS * 3 + STS * 1, STS * 1, STS))
-            screen.blit(tile, (TS * j + STS, TS * i + STS), (3 * TS * animFrame + TS * 1 + STS * 1, TS * 3 + STS * 1, STS * 1, STS))
+            blitCalls.append(((TS * j    , TS * i), (3 * TS * animFrame + TS * 2 + STS * 0, TS * 0 + STS * 0, STS * 1, STS)))  # ##
+            blitCalls.append(((TS * j + STS, TS * i), (3 * TS * animFrame + TS * 2 + STS * 1, TS * 0 + STS * 0, STS * 1, STS)))  # ##
+            blitCalls.append(((TS * j    , TS * i + STS), (3 * TS * animFrame + TS * 1 + STS * 0, TS * 3 + STS * 1, STS * 1, STS)))
+            blitCalls.append(((TS * j + STS, TS * i + STS), (3 * TS * animFrame + TS * 1 + STS * 1, TS * 3 + STS * 1, STS * 1, STS)))
             
         # <--+-->
         #    |
         #    V
         elif neighbors == '0111':
-            screen.blit(tile, (TS * j    , TS * i), (3 * TS * animFrame + TS * 1 + STS * 0, TS * 1 + STS * 0, STS * 1, STS))
-            screen.blit(tile, (TS * j + STS, TS * i), (3 * TS * animFrame + TS * 1 + STS * 1, TS * 1 + STS * 0, STS * 1, STS))
-            screen.blit(tile, (TS * j    , TS * i + STS), (3 * TS * animFrame + TS * 2 + STS * 0, TS * 0 + STS * 1, STS * 1, STS))  # ##
-            screen.blit(tile, (TS * j + STS, TS * i + STS), (3 * TS * animFrame + TS * 2 + STS * 1, TS * 0 + STS * 1, STS * 1, STS))  # ##
+            blitCalls.append(((TS * j    , TS * i), (3 * TS * animFrame + TS * 1 + STS * 0, TS * 1 + STS * 0, STS * 1, STS)))
+            blitCalls.append(((TS * j + STS, TS * i), (3 * TS * animFrame + TS * 1 + STS * 1, TS * 1 + STS * 0, STS * 1, STS)))
+            blitCalls.append(((TS * j    , TS * i + STS), (3 * TS * animFrame + TS * 2 + STS * 0, TS * 0 + STS * 1, STS * 1, STS)))  # ##
+            blitCalls.append(((TS * j + STS, TS * i + STS), (3 * TS * animFrame + TS * 2 + STS * 1, TS * 0 + STS * 1, STS * 1, STS)))  # ##
             
         #      A
         #      |
@@ -216,44 +255,64 @@ class SDisplayWindow(SActor):
         #      V
         elif neighbors == '1111':
             area = (TS * 2, TS * 0, TS, TS)
-            screen.blit(tile, (TS * j, TS * i), area)
+            blitCalls.append(((TS * j, TS * i), area))
         else:
             area = (TS * 1, TS * 2, TS, TS)
-            screen.blit(tile, (TS * j, TS * i), area)
+            blitCalls.append(((TS * j, TS * i), area))
+        
+        # blit call
+        for bc in blitCalls:
+            #screen.blit(tile, *bc)
+            self.blitTilePixelSpace(screen, tile, camOff, *bc)
+
+    def getTileBlitLoc(self, tIndex, camOff):
+        tx, ty = tIndex
+        return (camOff[0] + TS * (tx-self.camOriginTile[0]),
+                camOff[1] + TS * (ty-self.camOriginTile[1]))    
+        
+    def getTileBlitLocFromPixelSpace(self, destPixel, camOff):
+        destX, destY = destPixel
+        return (camOff[0] + destX - TS*self.camOriginTile[0],
+                camOff[1] + destY - TS*self.camOriginTile[1])
     
+    def blitTile(self, screen, tile, tIndex, camOff, area):
+        screen.blit(tile, self.getTileBlitLoc(tIndex, camOff), area)
+    
+    def blitTilePixelSpace(self, screen, tile, camOff, destPixel, area):
+        screen.blit(tile, self.getTileBlitLocFromPixelSpace(destPixel, camOff),
+                    area)
     
     def drawTerrainTiles(self, screen, ws):
         
-        TS = 32  # Tile Size
+        tileO = tuple((v*TS for v in self.camOriginTile))
+        camOff = tuple((tileO[i] - self.camOrigin[i] for i in range(2)))
         
-        for i, r in enumerate(ws.tileData.terrain):
-            for j, c in enumerate(r):
+        #print tileO, camOff, self.camOriginTile, self.camLastTile
+        
+        for ty in range(self.camOriginTile[1], self.camLastTile[1]):
+            for tx in range(self.camOriginTile[0], self.camLastTile[0]):
+                
+                t, _, _ = ws.tileData.getCellData(tx, ty)
                 
                 autoTile = None
                 autoTileAnim = False
                 
-                if c == 0:
+                if t == 0:
                     area = (TS * 1, TS * 0, TS, TS)
-                    screen.blit(self.waterTile, (TS * j, TS * i), area)
-                elif c == 1:
+                    self.blitTile(screen, self.waterTile, (tx,ty), camOff, area)
+                elif t == 1:
                     autoTile = self.waterTile
                     autoTileAnim = True
-                elif c == 2:
+                elif t == 2:
                     autoTile = self.dustRoadTile
+                else:
+                    raise RuntimeError('wtf')
                 
                 if autoTile:
-                    neighbors = '%d%d%d%d' % (1 if ws.tileData.terrain[i - 1][j] == c else 0,
-                                              1 if ws.tileData.terrain[i + 1][j] == c else 0,
-                                              1 if r[j - 1] == c else 0,
-                                              1 if r[j + 1] == c else 0)
-                    
-                    self.drawAutotiles(screen, ws, autoTile, i, j,
-                                       neighbors, autoTileAnim)
+                    self.drawAutotiles(screen, ws, autoTile, ty, tx,
+                                       autoTileAnim, t, camOff)
                     
     def drawBuildingTiles(self, screen, ws, ground):
-        
-        TS = 32  # Tile Size
-        STS = 16  # Sub-Tile Size
         
         for i, r in enumerate(ws.tileData.building):
             for j, c in enumerate(r):
@@ -307,8 +366,6 @@ class SDisplayWindow(SActor):
     
     def drawCollisionTiles(self, screen, ws):
         
-        TS = 32  # Tile Size
-
         for i, r in enumerate(ws.tileData.collision):
             for j, c in enumerate(r):
                 if not ws.tileData.isMovable(j, i):
@@ -317,7 +374,6 @@ class SDisplayWindow(SActor):
         
     def drawPathFindTest(self, screen, ws):
         
-        TS = 32  # Tile Size
         path = ws.tileData.findPath(5,5,2,7)
         
         for i, p in enumerate(path):
@@ -349,9 +405,6 @@ class SDisplayWindow(SActor):
         
         
     def drawAnimatedCharacterSprite(self, screen, actorProp, tileType):
-        
-        TS = 32  # Tile Size
-        STS = 16  # Sub-Tile Size
         
         i = actorProp.location[0] / TS
         j = actorProp.location[1] / TS
@@ -469,42 +522,39 @@ class SDisplayWindow(SActor):
     
 
     def drawGridDebug(self, screen):
-        for i in xrange(swidth//32):
-            pygame.draw.line(screen, (128,128,128), (32*i, 0), (32*i, sheight))
-        for i in xrange(sheight//32):
-            pygame.draw.line(screen, (128,128,128), (0, 32*i), (swidth, 32*i))
+        
+        for i in xrange(self.swidth//32):
+            pygame.draw.line(screen, (128,128,128), (32*i, 0), (32*i, self.sheight))
+        for i in xrange(self.sheight//32):
+            pygame.draw.line(screen, (128,128,128), (0, 32*i), (self.swidth, 32*i))
             
+        for i in xrange(self.swidth//32):
+            for j in xrange(self.sheight//32):
+                label = self.font.render('%d,%d'%(i,j), 1, (0, 0, 0))
+                screen.blit(label, (TS*i, TS*j))
     
     def handleMoveKeyEvent(self, event):
-        if event.type == pygame.KEYDOWN:
-            if event.key == pygame.K_RIGHT:
-                self._client.send((self.channel, 'MOVE_PAWN', 'E', True))
-        if event.type == pygame.KEYUP:
-            if event.key == pygame.K_RIGHT:
-                self._client.send((self.channel, 'MOVE_PAWN', 'E', False))
-        if event.type == pygame.KEYDOWN:
-            if event.key == pygame.K_LEFT:
-                self._client.send((self.channel, 'MOVE_PAWN', 'W', True))
-        if event.type == pygame.KEYUP:
-            if event.key == pygame.K_LEFT:
-                self._client.send((self.channel, 'MOVE_PAWN', 'W', False))
-        if event.type == pygame.KEYDOWN:
-            if event.key == pygame.K_UP:
-                self._client.send((self.channel, 'MOVE_PAWN', 'N', True))
-        if event.type == pygame.KEYUP:
-            if event.key == pygame.K_UP:
-                self._client.send((self.channel, 'MOVE_PAWN', 'N', False))
-        if event.type == pygame.KEYDOWN:
-            if event.key == pygame.K_DOWN:
-                self._client.send((self.channel, 'MOVE_PAWN', 'S', True))
-        if event.type == pygame.KEYUP:
-            if event.key == pygame.K_DOWN:
-                self._client.send((self.channel, 'MOVE_PAWN', 'S', False))
+        if event.type in [pygame.KEYDOWN, pygame.KEYUP]:
+            
+            pressed = event.type == pygame.KEYDOWN
+            
+            arrowAction = ARROW_KEY_MAPPING.get(event.key, None)
+            if arrowAction is not None:
+                self._client.send((self.channel, 'MOVE_PAWN', arrowAction,
+                                   pressed))
+            
+            kpAction = KEYPAD_KEY_MAPPING.get(event.key, None)
+            if kpAction is not None:
+                self.camKey[kpAction] = pressed
+
+            if event.key == pygame.K_KP5:
+                self.camX = self.camY = 0
+                
     
     def updateDisplay(self, msgArgs):
-        
-        self.deltaTime = msgArgs[0].time - self.time
-        self.time = msgArgs[0].time
+        ws = msgArgs[0]
+        self.deltaTime = ws.time - self.time
+        self.time = ws.time
         
         for event in pygame.event.get():
             if any((event.type == pygame.QUIT,
@@ -525,8 +575,11 @@ class SDisplayWindow(SActor):
         
         self.frame += 1
         
-        ws = msgArgs[0]
         
+        self.camX += self.camKey[EAST] - self.camKey[WEST] #self.camdX
+        self.camY += self.camKey[SOUTH] - self.camKey[NORTH] #self.camdY
+        
+        screen = self.mainSurface
         
         self.drawTerrainTiles(screen, ws)
         self.drawGridDebug(screen)
@@ -536,6 +589,13 @@ class SDisplayWindow(SActor):
         self.drawAllActors(screen, ws)
         self.drawUpperBuildingTiles(screen, ws)
         self.drawFadeoutTexts(screen)
+        
+        screen = pygame.display.get_surface()
+        screen.blit(self.mainSurface, (100,100))
+        
+        label = self.font.render('TL Origin %s' % str(self.camOrigin),
+                                 1, (0, 0, 0))
+        screen.blit(label, (0, 0))
         
         pygame.display.flip()
         

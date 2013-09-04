@@ -172,6 +172,10 @@ class SActor(object):
             self._display.send(msg)
     
 class ActorProperties:
+    @property
+    def tileLoc(self):
+        return (int(self.location[0]//32), int(self.location[1]//32))
+    
     def __init__(self, name, location=(-1,-1), angle=0, velocity=0, height=-1,
                  width=-1, hitpoints=1, public=True, harvestable=False,
                  physical=True, animatedSprite=False, instanceName='',
