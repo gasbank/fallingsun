@@ -1,6 +1,7 @@
 import unittest
 import random
 import time
+import math
 
 DIM = 2
 
@@ -20,10 +21,9 @@ class KdNode(object):
             else:
                 return self.left.findMin(i, (cd+1)%DIM)
         else:
-            return min((self.data,
-                        self.left.findMin(i, (cd+1)%DIM) if self.left else self.data,
-                        self.right.findMin(i, (cd+1)%DIM) if self.right else self.data),
-                       key=lambda t: t[i])
+            l = self.left.findMin(i, (cd+1)%DIM) if self.left else self.data
+            r = self.right.findMin(i, (cd+1)%DIM) if self.right else self.data
+            return min((self.data, l, r), key=lambda t: t[i])
         
         raise RuntimeError('This line should be unreachable.')
     
@@ -50,6 +50,12 @@ class KdNode(object):
         
 
 class Rect(object):
+    
+    @property
+    def x2(self): return self.x+self.w
+    @property
+    def y2(self): return self.y+self.h
+    
     def __init__(self, x, y, w, h):
         self.x = x
         self.y = y
@@ -68,20 +74,15 @@ class Rect(object):
         
         px, py = p
         
-        if px < self.x and py < self.y: return distance((self.x,self.y), p)
-        elif px < self.x and py >= self.y+self.h: return distance((self.x,self.y+self.h), p)
-        elif px >= self.x+self.w and py >= self.y+self.h: return distance((self.x+self.w,self.y+self.h), p)
-        elif px >= self.x+self.w and py < self.y: return distance((self.x+self.w,self.y), p)
-        elif px < self.x and self.y < py <= self.y+self.h: return abs(self.x-px)
-        elif px >= self.x+self.w and self.y < py <= self.y+self.h: return abs(self.x+self.w-px)
-        elif self.x < px <= self.x+self.w and py < self.y: return abs(self.y-py)
-        elif self.x < px <= self.x+self.w and py >= self.y+self.h: return abs(self.y+self.h-py)
-        else: return 0
-        
+        dx = max(abs(self.x+self.w/2.0 - px) - self.w/2.0, 0)
+        dy = max(abs(self.y+self.h/2.0 - py) - self.h/2.0, 0)
+        return distance((0,0),(dx,dy))
+    
     def trimLeft(self, cd, p):
         
         assert len(p) == 2
-        assert self.x <= p[0] <= self.x+self.w and self.y <= p[1] <= self.y+self.h
+        assert self.x <= p[0] <= self.x+self.w
+        assert self.y <= p[1] <= self.y+self.h
         
         if cd == 0:
             return Rect(self.x, self.y, p[0]-self.x, self.h)
@@ -93,12 +94,13 @@ class Rect(object):
     def trimRight(self, cd, p):
         
         assert len(p) == 2
-        assert self.x <= p[0] <= self.x+self.w and self.y <= p[1] <= self.y+self.h
+        assert self.x <= p[0] <= self.x2
+        assert self.y <= p[1] <= self.y2
         
         if cd == 0:
-            return Rect(p[0], self.y, self.x+self.w-p[0], self.h)
+            return Rect(p[0], self.y, self.x2-p[0], self.h)
         elif cd == 1:
-            return Rect(self.x, p[1], self.w, self.y+self.h-p[1])
+            return Rect(self.x, p[1], self.w, self.y2-p[1])
         else:
             raise RuntimeError('invalid cd value.')
     
@@ -106,18 +108,20 @@ class Rect(object):
         return not self.isOverlapWithRect(r)
     
     def isOverlapWithRect(self, r):
-        xOverlap = r.x <= self.x <= r.x + r.w or self.x <= r.x <= self.x+self.w
-        yOverlap = r.y <= self.y <= r.y + r.h or self.y <= r.y <= self.y+self.h
+        xOverlap = r.x <= self.x <= r.x2 or self.x <= r.x <= self.x2
+        yOverlap = r.y <= self.y <= r.y2 or self.y <= r.y <= self.y2
         return xOverlap and yOverlap
         
     def containsRect(self, r):
-        return self.containsPoint((r.x,r.y)) and self.containsPoint((r.x+r.w,r.y+r.h))
+        return self.containsPoint((r.x,r.y)) and self.containsPoint((r.x2,r.y2))
     
     def containsPoint(self, x):
-        return self.x <= x[0] <= self.x+self.w and self.y <= x[1] <= self.y+self.h
+        return self.x <= x[0] <= self.x2 and self.y <= x[1] <= self.y2
     
     def __str__(self):
-        return str([self.x,self.y,self.w,self.h]) + ' X:' + str((self.x,self.x+self.w)) + ' Y:' + str((self.y, self.y+self.h)) 
+        return 'Rect(%s, X:%s, Y:%s)' % (str([self.x,self.y,self.w,self.h]),
+                                         str((self.x,self.x2)),
+                                         str((self.y, self.y2))) 
     
 class Range(Rect):
     pass
@@ -133,9 +137,17 @@ def distancePointRect(q, r):
 def distance(q, p):
     return abs(q[0]-p[0]) + abs(q[1]-p[1])    
 
+class OutOfSearchSpaceError(Exception):
+    def __init__(self, x, ss):
+        Exception.__init__(self, 'A point %s is out of search space.'\
+                           'Search space is %s.' % (str(x), str(ss)))
+
 class KdTree(object):
-    def __init__(self, x=None, points=None):
+    def __init__(self, x=None, points=None,
+                 searchSpace=Rect(-10000,-10000,20000,20000)):
+        
         self._root = None
+        self._searchSpace = searchSpace
         
         if x is not None and points is None:
             self.insert(x)
@@ -158,6 +170,10 @@ class KdTree(object):
             return []
         
     def insert(self, x):
+        
+        if not self._searchSpace.containsPoint(x):
+            raise OutOfSearchSpaceError(x, self._searchSpace)
+        
         self._root = self._insert(x, self._root, 0)
         
     def nearestNeighbor(self, q):
@@ -181,7 +197,7 @@ class KdTree(object):
         else: return 0
         
     def _getRootRect(self):
-        return Rect(-10000,-10000,20000,20000)
+        return self._searchSpace
     
     def _insert(self, x, t, cd):
         if t is None:
@@ -206,11 +222,15 @@ class KdTree(object):
             close = Close(t.data, dist)
         
         if q[cd] < t.data[cd]:
-            close = self._nearNeigh(q, t.left, (cd+1)%DIM, r.trimLeft(cd, t.data), close)
-            close = self._nearNeigh(q, t.right, (cd+1)%DIM, r.trimRight(cd, t.data), close)
+            close = self._nearNeigh(q, t.left, (cd+1)%DIM,
+                                    r.trimLeft(cd, t.data), close)
+            close = self._nearNeigh(q, t.right, (cd+1)%DIM,
+                                    r.trimRight(cd, t.data), close)
         else:
-            close = self._nearNeigh(q, t.right, (cd+1)%DIM, r.trimRight(cd, t.data), close)
-            close = self._nearNeigh(q, t.left, (cd+1)%DIM, r.trimLeft(cd, t.data), close)
+            close = self._nearNeigh(q, t.right, (cd+1)%DIM,
+                                    r.trimRight(cd, t.data), close)
+            close = self._nearNeigh(q, t.left, (cd+1)%DIM,
+                                    r.trimLeft(cd, t.data), close)
         
         return close
     
@@ -231,8 +251,10 @@ class KdTree(object):
             if queryPoints:
                 points.append(t.data)
         
-        cl, pl = self._range(Q, t.left, (cd+1)%DIM, C.trimLeft(cd, t.data), queryPoints)
-        cr, pr = self._range(Q, t.right, (cd+1)%DIM, C.trimRight(cd, t.data), queryPoints)
+        cl, pl = self._range(Q, t.left, (cd+1)%DIM, C.trimLeft(cd, t.data),
+                             queryPoints)
+        cr, pr = self._range(Q, t.right, (cd+1)%DIM, C.trimRight(cd, t.data),
+                             queryPoints)
         
         c += cl + cr
         if queryPoints:
@@ -302,6 +324,11 @@ class KdTreeTestCase(unittest.TestCase):
         self.assertEqual((25,20), t._root.right.right.data)
         self.assertEqual(6, len(t))
         self.assertEqual(4, t.getMaxDepth())
+        
+        self.assertRaises(OutOfSearchSpaceError, t.insert, (-100000,0))
+        self.assertRaises(OutOfSearchSpaceError, t.insert, (100000,0))
+        self.assertRaises(OutOfSearchSpaceError, t.insert, (0,-100000))
+        self.assertRaises(OutOfSearchSpaceError, t.insert, (999999,100000))
         
     def testFindMin(self):
         t = KdTree((10,20))
@@ -436,22 +463,27 @@ class KdTreeTestCase(unittest.TestCase):
         self.assertEqual(set(points), set(t.getAllPoints()))
         
         t.deleteNode((10,20))
-        self.assertEqual(set(points)-set([(10,20)]), set(t.getAllPoints()))
+        self.assertEqual(set(points)-set([(10,20)]),
+                         set(t.getAllPoints()))
         
         t.deleteNode((0,7))
-        self.assertEqual(set(points)-set([(10,20),(0,7)]), set(t.getAllPoints()))
+        self.assertEqual(set(points)-set([(10,20),(0,7)]),
+                         set(t.getAllPoints()))
         
         t.deleteNode((5,1))
-        self.assertEqual(set(points)-set([(10,20),(0,7),(5,1)]), set(t.getAllPoints()))
+        self.assertEqual(set(points)-set([(10,20),(0,7),(5,1)]),
+                         set(t.getAllPoints()))
         
         t.deleteNode((20,5))
-        self.assertEqual(set(points)-set([(10,20),(0,7),(5,1),(20,5)]), set(t.getAllPoints()))
+        self.assertEqual(set(points)-set([(10,20),(0,7),(5,1),(20,5)]),
+                         set(t.getAllPoints()))
         
         t.deleteNode((5,10))
-        self.assertEqual(set(points)-set([(10,20),(0,7),(5,1),(20,5),(5,10)]), set(t.getAllPoints()))
+        self.assertEqual(set(points)-set([(10,20),(0,7),(5,1),(20,5),(5,10)]),
+                         set(t.getAllPoints()))
         
         t.deleteNode((25,20))
-        self.assertEqual(set(points)-set([(10,20),(0,7),(5,1),(20,5),(5,10),(25,20)]), set(t.getAllPoints()))
+        self.assertEqual(set([]), set(t.getAllPoints()))
         
         t.insert((0,0))
         self.assertEqual(set([(0,0)]), set(t.getAllPoints()))
@@ -482,7 +514,7 @@ if __name__ == '__main__':
     '''
     === Nearest neighbor search ===
     '''    
-    points = list(set([getRandomPoint() for x in range(5000)]))
+    points = list(set([getRandomPoint() for x in range(500)]))
     t = KdTree(points=points)
     print '# of points', len(points)
     
@@ -549,30 +581,44 @@ if __name__ == '__main__':
     === Insertion/Deletion ===
     '''
     t0 = time.clock()
-    n = 100
+    n = 500
     points = list(set([getRandomPoint() for x in range(n)]))
     t = KdTree(points=points)
     print '# of points', len(points)
     print 'kd-tree construction:', elapsed, 'seconds elapsed.', elapsed/n, 'sec per element. Max depth=', t.getMaxDepth()
 
-    t0 = time.clock()
-    nq = 200000 # insertion/deletion count
+    t0 = time.time()
+    nq = n*2 # insertion/deletion count
+    elapsedList = []
     insCount = delCount = 0
     for i in range(nq):
+        
         action = random.choice(['INS', 'DEL'])
         if action == 'INS':
             p = getRandomPoint()
             points.append(p)
+            
+            tt0 = time.time()
             t.insert(p)
+            elapsedList.append(time.time() - tt0)
+            
             insCount += 1
         else:
             p = random.choice(points)
             points.remove(p)
-            t.deleteNode(p)
-            delCount += 1
             
-    elapsed = time.clock() - t0
+            tt0 = time.time()
+            t.deleteNode(p)
+            elapsedList.append(time.time() - tt0)
+            
+            delCount += 1
+
+    mean = sum(elapsedList) / len(elapsedList)
+    variance = sum((v**2 for v in elapsedList)) / len(elapsedList) - mean**2
+    stddev = math.sqrt(variance)
+            
+    elapsed = time.time() - t0
     print 'kd-tree ins', insCount, 'del', delCount
-    print 'kd-tree ins/del:', elapsed, 'seconds elapsed.', elapsed/nq, 'sec per ins/del. Max depth=', t.getMaxDepth()
+    print 'kd-tree ins/del:', elapsed, 'seconds elapsed.', mean, 'sec per ins/del.', 'stddev=', stddev, 'Max depth=', t.getMaxDepth()
     
     
