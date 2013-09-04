@@ -72,6 +72,7 @@ class SDisplayWindow(SActor):
         self.camX = self.camY = 0
         self.camdX = self.camdY = 0
         self.camKey = [False]*4
+        self.camOff = None
         
         VPX = 8
         VPY = 8
@@ -131,7 +132,7 @@ class SDisplayWindow(SActor):
             return surface
     
 
-    def drawAutotiles(self, screen, ws, tile, i, j, anim, c, camOff):
+    def drawAutotiles(self, screen, ws, tile, i, j, anim, c):
         
         neighbors = ws.tileData.getNeighborSameString(j, i, c)
         
@@ -262,32 +263,25 @@ class SDisplayWindow(SActor):
         
         # blit call
         for bc in blitCalls:
-            #screen.blit(tile, *bc)
-            self.blitTilePixelSpace(screen, tile, camOff, *bc)
+            self.blitTilePixelSpace(screen, tile, *bc)
 
-    def getTileBlitLoc(self, tIndex, camOff):
+    def getTileBlitLoc(self, tIndex):
         tx, ty = tIndex
-        return (camOff[0] + TS * (tx-self.camOriginTile[0]),
-                camOff[1] + TS * (ty-self.camOriginTile[1]))    
+        return (self.camOff[0] + TS * (tx-self.camOriginTile[0]),
+                self.camOff[1] + TS * (ty-self.camOriginTile[1]))    
         
-    def getTileBlitLocFromPixelSpace(self, destPixel, camOff):
+    def getTileBlitLocFromPixelSpace(self, destPixel):
         destX, destY = destPixel
-        return (camOff[0] + destX - TS*self.camOriginTile[0],
-                camOff[1] + destY - TS*self.camOriginTile[1])
+        return (self.camOff[0] + destX - TS*self.camOriginTile[0],
+                self.camOff[1] + destY - TS*self.camOriginTile[1])
     
-    def blitTile(self, screen, tile, tIndex, camOff, area):
-        screen.blit(tile, self.getTileBlitLoc(tIndex, camOff), area)
+    def blitTile(self, screen, tile, tIndex, area):
+        screen.blit(tile, self.getTileBlitLoc(tIndex), area)
     
-    def blitTilePixelSpace(self, screen, tile, camOff, destPixel, area):
-        screen.blit(tile, self.getTileBlitLocFromPixelSpace(destPixel, camOff),
-                    area)
+    def blitTilePixelSpace(self, screen, tile, destPixel, area):
+        screen.blit(tile, self.getTileBlitLocFromPixelSpace(destPixel), area)
     
     def drawTerrainTiles(self, screen, ws):
-        
-        tileO = tuple((v*TS for v in self.camOriginTile))
-        camOff = tuple((tileO[i] - self.camOrigin[i] for i in range(2)))
-        
-        #print tileO, camOff, self.camOriginTile, self.camLastTile
         
         for ty in range(self.camOriginTile[1], self.camLastTile[1]):
             for tx in range(self.camOriginTile[0], self.camLastTile[0]):
@@ -299,7 +293,7 @@ class SDisplayWindow(SActor):
                 
                 if t == 0:
                     area = (TS * 1, TS * 0, TS, TS)
-                    self.blitTile(screen, self.waterTile, (tx,ty), camOff, area)
+                    self.blitTile(screen, self.waterTile, (tx,ty), area)
                 elif t == 1:
                     autoTile = self.waterTile
                     autoTileAnim = True
@@ -310,14 +304,16 @@ class SDisplayWindow(SActor):
                 
                 if autoTile:
                     self.drawAutotiles(screen, ws, autoTile, ty, tx,
-                                       autoTileAnim, t, camOff)
+                                       autoTileAnim, t)
                     
     def drawBuildingTiles(self, screen, ws, ground):
         
-        for i, r in enumerate(ws.tileData.building):
-            for j, c in enumerate(r):
+        for ty in range(self.camOriginTile[1], self.camLastTile[1]):
+            for tx in range(self.camOriginTile[0], self.camLastTile[0]):
                 
-                if c == 2:
+                _, b, _ = ws.tileData.getCellData(tx, ty)
+                
+                if b == 2:
                     # Tent sprite
                     spriteX = 0
                     spriteY = 13
@@ -328,7 +324,7 @@ class SDisplayWindow(SActor):
                     sampleOffsetX = 0
                     sampleOffsetY = 0
                     
-                elif c == 3:
+                elif b == 3:
                     # Tree sprite
                     spriteX = 0
                     spriteY = 5
@@ -344,15 +340,14 @@ class SDisplayWindow(SActor):
                 for ii in range(spriteHeight):
                     for jj in range(spriteWidth):
                         
-                        if ws.tileData.collision[i+ii][j+jj] == ground:
-                
-                            screen.blit(self.grasslandTile,
-                                        (TS * j + drawOffsetX + TS*jj,
-                                         TS * i + drawOffsetY + TS*ii), 
-                                        (TS * spriteX + STS * 0 + TS*jj + sampleOffsetX, 
-                                         TS * spriteY + STS * 0 + TS*ii + sampleOffsetY, 
-                                         TS, 
-                                         TS))
+                        if ws.tileData.collision[ty+ii][tx+jj] == ground:
+                            
+                            self.blitTilePixelSpace(screen, self.grasslandTile,
+                                                    (TS * tx + drawOffsetX + TS*jj,
+                                                     TS * ty + drawOffsetY + TS*ii), 
+                                                    (TS * spriteX + STS * 0 + TS*jj + sampleOffsetX, 
+                                                     TS * spriteY + STS * 0 + TS*ii + sampleOffsetY, 
+                                                     TS, TS))
         
     def drawGroundBuildingTiles(self, screen, ws):
         
@@ -366,11 +361,14 @@ class SDisplayWindow(SActor):
     
     def drawCollisionTiles(self, screen, ws):
         
-        for i, r in enumerate(ws.tileData.collision):
-            for j, c in enumerate(r):
-                if not ws.tileData.isMovable(j, i):
+        for ty in range(self.camOriginTile[1], self.camLastTile[1]):
+            for tx in range(self.camOriginTile[0], self.camLastTile[0]):
+                
+                locX, locY = self.getTileBlitLoc((tx,ty))
+                
+                if not ws.tileData.isMovable(tx, ty):
                     pygame.draw.rect(screen, (255, 128, 0),
-                                     pygame.Rect(TS*j, TS*i, TS, TS), 1)
+                                     pygame.Rect(locX, locY, TS, TS), 1)
         
     def drawPathFindTest(self, screen, ws):
         
@@ -415,13 +413,11 @@ class SDisplayWindow(SActor):
         animFrame = (actorProp.velocity * self.frame / 200) % 4
         direction = self.getDirectionFromAngle(actorProp.angle)
         
-        screen.blit(tileType,
-                    (TS * i + drawXOffset,
-                     TS * j + drawYOffset), 
-                    (1 * TS * animFrame + TS * 0 + STS * 0,
-                     (TS * 1 + STS * 1) * direction,
-                     TS * 1,
-                     TS * 1 + STS))
+        self.blitTilePixelSpace(screen, tileType,
+                                (TS * i + drawXOffset, TS * j + drawYOffset), 
+                                (1 * TS * animFrame + TS * 0 + STS * 0,
+                                 (TS * 1 + STS * 1) * direction,
+                                 TS * 1, TS * 1 + STS))
         
     def drawActor(self, screen, actorProp):
         
@@ -453,7 +449,8 @@ class SDisplayWindow(SActor):
             itemImage = pygame.transform.rotate(itemImage, -actorProp.angle)
             screen.blit(itemImage, actorProp.location)
         
-        nameplateLoc = list(actorProp.location)
+        
+        nameplateLoc = list(self.getTileBlitLocFromPixelSpace(actorProp.location)) #list(actorProp.location)
         
         hitpointsDrawHeight = 5
         waitGaugeDrawHeight = 5
@@ -497,9 +494,12 @@ class SDisplayWindow(SActor):
     
 
     def drawSightDebug(self, screen, actorProp):
+        
+        loc = [loc - 32*actorProp.sightRange for loc in actorProp.location]
+        loc = self.getTileBlitLocFromPixelSpace(loc) 
+        
         pygame.draw.rect(screen, (255, 255, 255),
-                         pygame.Rect(actorProp.location[0] - 32*actorProp.sightRange,
-                                     actorProp.location[1] - 32*actorProp.sightRange,
+                         pygame.Rect(loc[0], loc[1],
                                      32*(actorProp.sightRange*2+1),
                                      32*(actorProp.sightRange*2+1)),
                          1)
@@ -523,15 +523,16 @@ class SDisplayWindow(SActor):
 
     def drawGridDebug(self, screen):
         
-        for i in xrange(self.swidth//32):
-            pygame.draw.line(screen, (128,128,128), (32*i, 0), (32*i, self.sheight))
-        for i in xrange(self.sheight//32):
-            pygame.draw.line(screen, (128,128,128), (0, 32*i), (self.swidth, 32*i))
+        for tx in range(self.camOriginTile[0], self.camLastTile[0]):
+            pygame.draw.line(screen, (128,128,128), self.getTileBlitLoc((tx, self.camOriginTile[1])), self.getTileBlitLoc((tx, self.camLastTile[1])))
             
-        for i in xrange(self.swidth//32):
-            for j in xrange(self.sheight//32):
-                label = self.font.render('%d,%d'%(i,j), 1, (0, 0, 0))
-                screen.blit(label, (TS*i, TS*j))
+        for ty in range(self.camOriginTile[1], self.camLastTile[1]):
+            pygame.draw.line(screen, (128,128,128), self.getTileBlitLoc((self.camOriginTile[0], ty)), self.getTileBlitLoc((self.camLastTile[0], ty)))
+            
+        for ty in range(self.camOriginTile[1], self.camLastTile[1]):
+            for tx in range(self.camOriginTile[0], self.camLastTile[0]):
+                label = self.font.render('%d,%d'%(tx,ty), 1, (0, 0, 0))
+                screen.blit(label, self.getTileBlitLoc((tx, ty)))
     
     def handleMoveKeyEvent(self, event):
         if event.type in [pygame.KEYDOWN, pygame.KEYUP]:
@@ -578,6 +579,10 @@ class SDisplayWindow(SActor):
         
         self.camX += self.camKey[EAST] - self.camKey[WEST] #self.camdX
         self.camY += self.camKey[SOUTH] - self.camKey[NORTH] #self.camdY
+        
+        tileO = tuple((v*TS for v in self.camOriginTile))
+        self.camOff = tuple((tileO[i] - self.camOrigin[i] for i in range(2)))
+        
         
         screen = self.mainSurface
         

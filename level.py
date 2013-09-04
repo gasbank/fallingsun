@@ -157,11 +157,9 @@ class TileLevel(object):
         
         return r
     
-    def isMovable(self, i, j):
-        try:
-            return self.collision[j][i] == 0 and self.terrain[j][i] != 1
-        except IndexError:
-            return False
+    def isMovable(self, tx, ty):
+        t, _, c = self.getCellData(tx, ty)
+        return t != 1 and c == 0
     
     def createPathCell(self, i, j):
         class PathCell(object): pass
