@@ -2,6 +2,7 @@ import unittest
 import random
 import time
 import math
+import itertools
 
 DIM = 2
 
@@ -121,7 +122,7 @@ class Rect(object):
     def __str__(self):
         return 'Rect(%s, X:%s, Y:%s)' % (str([self.x,self.y,self.w,self.h]),
                                          str((self.x,self.x2)),
-                                         str((self.y, self.y2))) 
+                                         str((self.y,self.y2))) 
     
 class Range(Rect):
     pass
@@ -428,6 +429,29 @@ class KdTreeTestCase(unittest.TestCase):
         self.assertEqual((5,1), x)
         self.assertEqual(9, dist)
         
+    def testFindNearestNighbor2Query(self):
+
+        n = 1000 # point count
+        nq = 100 # query count
+        
+        points = list(set((getRandomPoint() for _ in range(n))))
+        t = KdTree(points=points)
+        
+        for _ in range(nq):
+            q = getRandomPoint()
+            nn, dist = t.nearestNeighbor(q)
+            
+            # Check our query result.
+            sortf = lambda x: distance(x,q)
+            # nnSol can contain two or more points.
+            nnSol = list(next(itertools.groupby(sorted(points, key=sortf), key=sortf))[1])
+            
+            i = nnSol.index(nn)
+            self.assertLessEqual(0, i)
+            self.assertEqual(nnSol[i], nn)
+            self.assertEqual(distance(nnSol[i],q), dist)
+            self.assertEqual(distance(nnSol[i],q), distance(nn,q))
+                
     def testRangeQuery(self):
         
         points = [(10,20),(20,5),(5,10),(0,7),(5,1),(25,20)]
@@ -455,7 +479,27 @@ class KdTreeTestCase(unittest.TestCase):
                          set(t.rangePoints(Range(100,100,5,5))))
         self.assertEqual(set(points),
                          set(t.rangePoints(Range(-100,-100,200,200))))
+    
+    def testRange2Query(self):
+
+        n = 1000 # point count
+        nq = 100 # query count
         
+        points = list(set((getRandomPoint() for _ in range(n))))
+        t = KdTree(points=points)
+        
+        for _ in range(nq):
+            q0 = getRandomPoint()
+            w = random.randrange(0,1000)
+            h = random.randrange(0,1000)
+            Q = Range(q0[0],q0[1],w,h)
+            rangePoints = t.rangePoints(Q)
+            
+            # Check our query result.
+            rangePointSet = set(rangePoints) 
+            rangePointSetSol = set([pp for pp in points if Q.containsPoint(pp)])
+            self.assertEqual(rangePointSetSol, rangePointSet)
+                
     def testDeleteNode(self):
         points = [(10,20),(20,5),(5,10),(0,7),(5,1),(25,20)]
         t = KdTree(points=points)
