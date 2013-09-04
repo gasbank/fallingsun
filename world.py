@@ -15,6 +15,7 @@ class WorldState:
         self.updateRate = updateRate
         self.time = time
         self.actors = []
+        self.actorsDict = {}
         self.tileData = tileData
 
 class KdActorNode(kdtree.KdNode): pass        
@@ -149,6 +150,7 @@ class SWorld(SActor):
         for actor in self.registeredActors:
             if self.registeredActors[actor].public:
                 ws.actors.append((actor, self.registeredActors[actor]))
+                ws.actorsDict[actor] = self.registeredActors[actor]
         
         for actor, prop in self.registeredActors.iteritems():
             self.debug('%s --WORLD_STATE--> %s' % (self.channel, actor))
@@ -338,12 +340,13 @@ class SWorld(SActor):
         self.info('%s joined the world.' % prop.instanceName)
     
     
-    def handleQueryRectRange(self, cenLoc, r):
+    def handleQueryRectRange(self, sentFrom, cenLoc, r):
         Q = kdtree.Range(cenLoc[0]-r*32, cenLoc[1]-r*32, 32*(2*r+1), 32*(2*r+1))
         points = self.kdActorTree.rangePoints(Q)
-        
+        sentFrom.send((self.channel, 'QUERY_RESULT', points))
+        '''
         for p in points:
-            print p[0],p[1],str(p[2]())
+            print p[0],p[1],str(p[2]())'''
     
     
     def defaultMessageAction(self, args):
@@ -411,7 +414,7 @@ class SWorld(SActor):
         elif msg == 'REQUEST_RELATIVE_TELEPORT':
             self.relativeTeleportActor(sentFrom, msgArgs[0])
         elif msg == 'QUERY_RECT_RANGE':
-            self.handleQueryRectRange(*msgArgs)
+            self.handleQueryRectRange(sentFrom, *msgArgs)
         else:
             raise RuntimeError("ERROR: The world got unknown message %s sent from %s"
                                % (msg, sentFrom));

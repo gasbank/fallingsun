@@ -2,6 +2,7 @@
 from actor import SActor, ActorProperties
 import pygame
 import os
+from sight import SSight
 
 TS = 32  # Tile Size
 STS = 16  # Sub-Tile Size
@@ -55,11 +56,11 @@ class SDisplayWindow(SActor):
         return (int(-self.camX//TS),int(-self.camY//TS))
     @property
     def camLastTile(self):
-        return (int((-self.camX+self.swidth)//TS),
-                int((-self.camY+self.sheight)//TS))
-    
+        return (int((-self.camX+self.swidth)//TS)+1,
+                int((-self.camY+self.sheight)//TS)+1)
+
     def __init__(self, world, windowTitle='Falling Sun', client=None,
-                 swidth=32*10, sheight=32*10):
+                 swidth=TS*10, sheight=TS*10, sightedActorsOnly=False):
         SActor.__init__(self, 'DisplayWindow')
         self.frame = 0
         self.world = world
@@ -68,19 +69,21 @@ class SDisplayWindow(SActor):
         self._client = client
         self.swidth = swidth
         self.sheight = sheight
+        self.sightedActorsOnly = sightedActorsOnly
+        self.sightedActors = None
         
         self.camX = self.camY = 0
         self.camdX = self.camdY = 0
         self.camKey = [False]*4
         self.camOff = None
         
-        VPX = 8
-        VPY = 8
+        VPX = swidth//TS
+        VPY = sheight//TS
         
         pygame.init()
         pygame.display.set_caption(windowTitle)
-        pygame.display.set_mode((swidth, sheight))
-        self.mainSurface = pygame.Surface((32*VPX,32*VPY))
+        pygame.display.set_mode((swidth+TS*2, sheight+TS*2))
+        self.mainSurface = pygame.Surface((TS*VPX,TS*VPY))
         
         self._fadeoutTexts = []
         self.font = pygame.font.Font('C:\windows\Fonts\GULIM.TTC', 10)
@@ -99,6 +102,9 @@ class SDisplayWindow(SActor):
                                          instanceName=self.instanceName)))
         self.world.send((self.channel, "TELL_ME_WORLD_SIZE"))
         
+        if client:
+            client.send((self.channel, 'I_AM_DISPLAY'))
+        
         self.debug('Created.')
         
     def defaultMessageAction(self, args):
@@ -109,15 +115,12 @@ class SDisplayWindow(SActor):
             self._fadeoutTexts.append(FadeoutText(self.bigFont, msgArgs[0],
                                                   msgArgs[1]))
         elif msg == 'WORLD_SIZE':
-            '''
-            global swidth, sheight
-            swidth = (msgArgs[0] + 1) * 32
-            sheight = (msgArgs[1] + 1) * 32
-            '''
-
             icon = pygame.image.load(os.path.join('data', 'fighter.ico')).convert_alpha()
             pygame.display.set_icon(icon)
-            
+        
+        elif msg == 'SIGHTED_ACTORS':
+            if self.sightedActorsOnly:
+                self.sightedActors = msgArgs[0]
         else:
             raise RuntimeError('Unknown message: %s' % msg)
         
@@ -495,7 +498,7 @@ class SDisplayWindow(SActor):
 
     def drawSightDebug(self, screen, actorProp):
         
-        loc = [loc - 32*actorProp.sightRange for loc in actorProp.location]
+        loc = [loc - TS*actorProp.sightRange for loc in actorProp.location]
         loc = self.getTileBlitLocFromPixelSpace(loc) 
         
         pygame.draw.rect(screen, (255, 255, 255),
@@ -505,13 +508,13 @@ class SDisplayWindow(SActor):
                          1)
     
     
-    def drawAllActors(self, screen, ws):
+    def drawListedActors(self, screen, actors):
         
-        for _, actorProp in sorted(ws.actors, key=lambda x: x[1].location[1]):
-            if actorProp.physical:
-                self.drawActor(screen, actorProp)
-            elif actorProp.name == 'SSight':
-                self.drawSightDebug(screen, actorProp)
+        for _, p in actors:
+            if p.physical:
+                self.drawActor(screen, p)
+            elif p.name == 'SSight':
+                self.drawSightDebug(screen, p)
     
     
     def drawFadeoutTexts(self, screen):
@@ -552,6 +555,27 @@ class SDisplayWindow(SActor):
                 self.camX = self.camY = 0
                 
     
+    def drawActors(self, screen, ws):
+        
+        actors = [] # Actors to draw...
+        
+        if self.sightedActorsOnly:
+            if self.sightedActors:
+                actors += [(aRef(),ws.actorsDict[aRef()])
+                           for _, _, aRef in self.sightedActors if aRef()]
+            
+            if ws.actorsDict[self._client].name == 'SSight':
+                actors.append((self._client, ws.actorsDict[self._client]))
+                
+        else:
+            actors = ws.actors # All actors!
+
+        # Y-sort
+        actors = sorted(actors, key=lambda a: a[1].location[1])
+        
+        # Draw!
+        self.drawListedActors(screen, actors)
+    
     def updateDisplay(self, msgArgs):
         ws = msgArgs[0]
         self.deltaTime = ws.time - self.time
@@ -576,9 +600,9 @@ class SDisplayWindow(SActor):
         
         self.frame += 1
         
-        
-        self.camX += self.camKey[EAST] - self.camKey[WEST] #self.camdX
-        self.camY += self.camKey[SOUTH] - self.camKey[NORTH] #self.camdY
+        SCROLL_SPEED = TS
+        self.camX += SCROLL_SPEED * (self.camKey[EAST] - self.camKey[WEST])
+        self.camY += SCROLL_SPEED * (self.camKey[SOUTH] - self.camKey[NORTH])
         
         tileO = tuple((v*TS for v in self.camOriginTile))
         self.camOff = tuple((tileO[i] - self.camOrigin[i] for i in range(2)))
@@ -591,12 +615,12 @@ class SDisplayWindow(SActor):
         self.drawCollisionTiles(screen, ws)
         #self.drawPathFindTest(screen, ws)
         self.drawGroundBuildingTiles(screen, ws)
-        self.drawAllActors(screen, ws)
+        self.drawActors(screen, ws)
         self.drawUpperBuildingTiles(screen, ws)
         self.drawFadeoutTexts(screen)
         
         screen = pygame.display.get_surface()
-        screen.blit(self.mainSurface, (100,100))
+        screen.blit(self.mainSurface, (TS,TS))
         
         label = self.font.render('TL Origin %s' % str(self.camOrigin),
                                  1, (0, 0, 0))

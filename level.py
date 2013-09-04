@@ -1,5 +1,8 @@
 import logging
 
+TERRAIN_GRASS = 0
+TERRAIN_WATER = 1
+
 class TileLevel(object):
     
     TENT = 2
@@ -24,7 +27,7 @@ class TileLevel(object):
         #self.placeTent(16,17)
     
     def getCellData(self, tx, ty):
-        t = self.terrain[ty][tx] if 0<=tx<self.width and 0<=ty<self.height else 1
+        t = self.terrain[ty][tx] if 0<=tx<self.width and 0<=ty<self.height else TERRAIN_GRASS
         b = self.building[ty][tx] if 0<=tx<self.width and 0<=ty<self.height else 0
         c = self.collision[ty][tx] if 0<=tx<self.width and 0<=ty<self.height else 0
         

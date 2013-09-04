@@ -7,10 +7,12 @@ from prey import SPrey
 from tree import STree
 from server import SServer
 from sight import SSight
+from home import SHome
 from websocketserver import SWebSocketServer
 
-def getRandomActorTile(maxX, maxY):
-    return tuple(32 * random.randrange(0,v) + 16 for v in [maxX, maxY])
+def getRandomActorTile(minX, minY, maxX, maxY):
+    return tuple(32 * random.randrange(m,M) + 16 for m,M in [(minX, maxX),
+                                                             (minY, maxY)])
 
 def getRandomAngle():
     return random.choice([0,90,180,270])
@@ -31,12 +33,16 @@ def main():
                    instanceName='TestSight', sightRange=5).channel
 
     SDisplayWindow(world, windowTitle='Falling Sun Server',
-                   swidth=32*15, sheight=32*15, client=sight)
+                   swidth=32*23, sheight=32*23, client=sight,
+                   sightedActorsOnly=True)
     
     STree(world, 'WOOD', location=(32*5,32*5), instanceName='TestTree')
+    
+    home = SHome(world, location=(32 * 10, 32 * 13),
+                 instanceName='WoodcutterHome')
 
-    for i in range(8):
-        SPrey(world, location=getRandomActorTile(worldSizeX, worldSizeY),
+    for i in range(5000):
+        SPrey(world, location=getRandomActorTile(0,0,100,100),
               velocity=20, angle=getRandomAngle(), instanceName='Prey%d'%i,
               stamina=100, maxStamina=100,
               roamingVelocity=random.randrange(25,35), intention='SYNCING')

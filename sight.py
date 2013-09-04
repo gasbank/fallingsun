@@ -10,6 +10,12 @@ class SSight(SActor):
         if self._sightRange == newValue: return
         self._sightRange = newValue
         self.world.send((self.channel, "SIGHT_RANGE", newValue))
+    @property
+    def display(self):
+        return self._display
+    @display.setter
+    def display(self, value):
+        self._display = value
         
     def __init__(self, world, location, instanceName, sightRange, user=None):
         SActor.__init__(self, instanceName)
@@ -19,6 +25,7 @@ class SSight(SActor):
         #self.location = location
         self.time = 0
         self.deltaTime = 0
+        self._display = None
         
         self.world.send((self.channel, "JOIN",
                          ActorProperties(self.__class__.__name__,
@@ -73,9 +80,14 @@ class SSight(SActor):
             self.world.send((self.channel, 'REQUEST_RELATIVE_TELEPORT', dLoc))
         elif msg == 'TELEPORTED':
             newLoc = msgArgs[0]
-            print newLoc
+            #print newLoc
             self.world.send((self.channel, 'QUERY_RECT_RANGE',
                              newLoc, self.sightRange))
+        elif msg == 'QUERY_RESULT':
+            if self.display:
+                self.display.send((self.channel, 'SIGHTED_ACTORS', msgArgs[0]))
+        elif msg == 'I_AM_DISPLAY':
+            self.display = sentFrom
         else:
             raise RuntimeError("ERROR: Unknown message %s sent from %s"
                                % (msg, sentFrom));
