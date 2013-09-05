@@ -1,8 +1,9 @@
 # coding: utf-8
-from actor import SActor, ActorProperties
+from actor import SActor, ActorProperties, NamedTasklet
 import pygame
 import os
 from sight import SSight
+import stackless
 
 TS = 32  # Tile Size
 STS = 16  # Sub-Tile Size
@@ -104,6 +105,8 @@ class SDisplayWindow(SActor):
         
         if client:
             client.send((self.channel, 'I_AM_DISPLAY'))
+            
+        NamedTasklet(self.pygameEventLoop)()
         
         self.debug('Created.')
         
@@ -111,6 +114,7 @@ class SDisplayWindow(SActor):
         _, msg, msgArgs = args[0], args[1], args[2:]
         if msg == 'WORLD_STATE':
             self.updateDisplay(msgArgs)
+            pass
         elif msg == 'DRAW_FADEOUT_TEXT':
             self._fadeoutTexts.append(FadeoutText(self.bigFont, msgArgs[0],
                                                   msgArgs[1]))
@@ -123,6 +127,24 @@ class SDisplayWindow(SActor):
                 self.sightedActors = msgArgs[0]
         else:
             raise RuntimeError('Unknown message: %s' % msg)
+
+    def pygameEventLoop(self):
+        doLoop = True
+        while doLoop:
+            for event in pygame.event.get():
+                if any((event.type == pygame.QUIT,
+                        (event.type == pygame.KEYDOWN
+                         and event.key == pygame.K_ESCAPE))):
+                    
+                    self.info('--%s--> %s' % ('CLOSE_WINDOW', self.world))
+                    self.world.send((self.channel, "CLOSE_WINDOW"))
+                    doLoop = False
+                
+                if self._client:
+                    self.handleMoveKeyEvent(event)
+
+            stackless.schedule()                    
+            
         
     def getIcon(self, iconName):
         if self.icons.has_key(iconName):
@@ -544,8 +566,10 @@ class SDisplayWindow(SActor):
             
             arrowAction = ARROW_KEY_MAPPING.get(event.key, None)
             if arrowAction is not None:
+                #self.info('MOVE_PAWN about to send...')
                 self._client.send((self.channel, 'MOVE_PAWN', arrowAction,
                                    pressed))
+                #self.info('MOVE_PAWN sent!')
             
             kpAction = KEYPAD_KEY_MAPPING.get(event.key, None)
             if kpAction is not None:
@@ -581,17 +605,6 @@ class SDisplayWindow(SActor):
         self.deltaTime = ws.time - self.time
         self.time = ws.time
         
-        for event in pygame.event.get():
-            if any((event.type == pygame.QUIT,
-                    (event.type == pygame.KEYDOWN
-                     and event.key == pygame.K_ESCAPE))):
-                
-                self.info('--%s--> %s' % ('CLOSE_WINDOW', self.world))
-                self.world.send((self.channel, "CLOSE_WINDOW"))
-            
-            if self._client:
-                self.handleMoveKeyEvent(event)
-                
         screen = pygame.display.get_surface()
         background = pygame.Surface(screen.get_size())
         background = background.convert()

@@ -341,13 +341,12 @@ class SWorld(SActor):
     
     
     def handleQueryRectRange(self, sentFrom, cenLoc, r):
+        #self.info('QUERY_RANGE_RECT detected.')
         Q = kdtree.Range(cenLoc[0]-r*32, cenLoc[1]-r*32, 32*(2*r+1), 32*(2*r+1))
         points = self.kdActorTree.rangePoints(Q)
+        #self.info('QUERY_RESULT about to send...')
         sentFrom.send((self.channel, 'QUERY_RESULT', points))
-        '''
-        for p in points:
-            print p[0],p[1],str(p[2]())'''
-    
+        #self.info('QUERY_RESULT sent!')
     
     def defaultMessageAction(self, args):
         sentFrom, msg, msgArgs = args[0], args[1], args[2:]
@@ -441,8 +440,10 @@ class SWorld(SActor):
         self.registeredActors[actor].location = location
         
     def relativeTeleportActor(self, actor, dLoc):
+        #self.info('REQUEST_RELATIVE_TELEPORT detected.')
         loc = self.registeredActors[actor].location
         newLoc = (loc[0] + dLoc[0], loc[1] + dLoc[1])
-        self.registeredActors[actor].location = newLoc 
-        
+        self.registeredActors[actor].location = newLoc
+        #self.info('TELEPORTED about to send...')
         actor.send((self.channel, 'TELEPORTED', newLoc))
+        #self.info('TELEPORTED sent!')

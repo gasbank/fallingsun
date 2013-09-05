@@ -63,6 +63,8 @@ class SSight(SActor):
             a, p = msgArgs[0]
             self.user.send((self.channel, 'SEND_UPDATE_VECTOR', a, p))
         elif msg == 'MOVE_PAWN':
+            #self.info('MOVE_PAWN detected.')
+            
             direction, pressed = msgArgs
             if pressed: return
             
@@ -77,13 +79,19 @@ class SSight(SActor):
             else:
                 raise RuntimeError('Unknown direction %s', direction)
             
+            #self.info('REQUEST_RELATIVE_TELEPORT about to send...')
             self.world.send((self.channel, 'REQUEST_RELATIVE_TELEPORT', dLoc))
+            #self.info('REQUEST_RELATIVE_TELEPORT sent!')
         elif msg == 'TELEPORTED':
             newLoc = msgArgs[0]
-            #print newLoc
+            #self.info('TELEPORTED detected.')
+            #self.info('QUERY_RECT_RANGE about to send...')
             self.world.send((self.channel, 'QUERY_RECT_RANGE',
                              newLoc, self.sightRange))
+            #self.info('QUERY_RECT_RANGE sent!')
         elif msg == 'QUERY_RESULT':
+            #self.info('QUERY_RESULT detected.')
+            
             if self.display:
                 self.display.send((self.channel, 'SIGHTED_ACTORS', msgArgs[0]))
         elif msg == 'I_AM_DISPLAY':

@@ -78,7 +78,13 @@ class SActor(object):
     
     def processMessage(self):
         while 1:
-            self.processMessageMethod(self.channel.receive())
+            msgs = []
+            msgs.append(self.channel.receive())
+            
+            while msgs:
+                while self.channel.balance > 0:
+                    msgs.append(self.channel.receive())
+                self.processMessageMethod(msgs.pop(0))
             
     def defaultMessageAction(self, args):
         pass
