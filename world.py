@@ -341,6 +341,10 @@ class SWorld(SActor):
     
     
     def handleQueryRectRange(self, sentFrom, cenLoc, r):
+        
+        if cenLoc is None:
+            cenLoc = self.registeredActors[sentFrom].location
+        
         #self.info('QUERY_RANGE_RECT detected.')
         Q = kdtree.Range(cenLoc[0]-r*32, cenLoc[1]-r*32, 32*(2*r+1), 32*(2*r+1))
         points = self.kdActorTree.rangePoints(Q)

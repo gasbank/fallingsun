@@ -28,25 +28,37 @@ def main():
                         disableCollisionCheck=True, useTestData=True)
     world = worldActor.channel
     
-    sightX, sightY = 5, 5
-    sight = SSight(world, location=(32 * sightX, 32 * sightY),
-                   instanceName='TestSight', sightRange=7).channel
-
-    SDisplayWindow(world, windowTitle='Falling Sun Server',
-                   swidth=32*23, sheight=32*23, client=sight,
-                   sightedActorsOnly=True)
-    
+    #
+    # Initially joining actors
+    #
     STree(world, 'WOOD', location=(32*5,32*5), instanceName='TestTree')
     
     home = SHome(world, location=(32 * 10, 32 * 13),
                  instanceName='WoodcutterHome')
 
     for i in range(10):
-        SPrey(world, location=getRandomActorTile(0,0,500,500),
+        SPrey(world, location=getRandomActorTile(0,0,23,23),
               velocity=20, angle=getRandomAngle(), instanceName='Prey%d'%i,
               stamina=100, maxStamina=100,
               roamingVelocity=random.randrange(25,35), intention='SYNCING')
     
+    #
+    # Sight
+    #
+    sightX, sightY = 14, 14
+    sight = SSight(world, location=(32 * sightX, 32 * sightY),
+                   instanceName='TestSight', sightRange=7).channel
+
+    #
+    # Display
+    #
+    SDisplayWindow(world, windowTitle='Falling Sun Server',
+                   swidth=32*23, sheight=32*23, client=sight,
+                   sightedActorsOnly=True)
+
+    #
+    # Servers
+    #
     SServer(world, 'Server')
     SWebSocketServer(world, 'WebSocketServer')
         

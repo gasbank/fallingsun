@@ -15,6 +15,9 @@ class SSight(SActor):
         return self._display
     @display.setter
     def display(self, value):
+        self.world.send((self.channel, 'QUERY_RECT_RANGE', None,
+                         self.sightRange))
+    
         self._display = value
         
     def __init__(self, world, location, instanceName, sightRange, user=None):
@@ -32,8 +35,9 @@ class SSight(SActor):
                                          location=location,
                                          instanceName=self.instanceName,
                                          physical=False)))
+        
         self.sightRange = sightRange
-    
+        
     def handleWorldState(self, ws, myProp):
         
         self.deltaTime = ws.time - self.time
@@ -90,8 +94,6 @@ class SSight(SActor):
                              newLoc, self.sightRange))
             #self.info('QUERY_RECT_RANGE sent!')
         elif msg == 'QUERY_RESULT':
-            #self.info('QUERY_RESULT detected.')
-            
             if self.display:
                 self.display.send((self.channel, 'SIGHTED_ACTORS', msgArgs[0]))
         elif msg == 'I_AM_DISPLAY':
