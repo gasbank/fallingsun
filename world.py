@@ -11,12 +11,13 @@ import time
 import kdtree
 
 class WorldState:
-    def __init__(self, updateRate, time, tileData):
+    def __init__(self, updateRate, time, tileData, kdActorTree):
         self.updateRate = updateRate
         self.time = time
         self.actors = []
         self.actorsDict = {}
         self.tileData = tileData
+        self.kdActorTree = kdActorTree
 
 class KdActorNode(kdtree.KdNode): pass        
         
@@ -144,7 +145,8 @@ class SWorld(SActor):
                 actorProp.location = (x, y)
             
     def sendWorldStateToActors(self, startTime):
-        ws = WorldState(self.updateRate, startTime, self.tileData)
+        ws = WorldState(self.updateRate, startTime, self.tileData,
+                        self.kdActorTree)
         for actor, prop in self.registeredActors.iteritems():
             if prop.public:
                 ws.actors.append((actor, prop))
@@ -411,7 +413,8 @@ class SWorld(SActor):
         elif msg == 'CHAT_TO_ALL':
             for a,p in self.registeredActors.iteritems():
                 if p.name == 'SUser':
-                    self.debug('%s sent chat message %s to %s.' % (sentFrom,a,msgArgs[0]))
+                    self.debug('%s sent chat message %s to %s.' %
+                               (sentFrom,a,msgArgs[0]))
                     a.send((sentFrom, 'CHAT', msgArgs[0]))
         elif msg == 'REQUEST_TELEPORT':
             self.teleportActor(sentFrom, msgArgs[0])
@@ -423,12 +426,14 @@ class SWorld(SActor):
             loc = self.registeredActors[sentFrom].location
             actors = self.queryRectRange(loc, msgArgs[0])
             #print actors
-            for a, p in ((a(), self.registeredActors[a()]) for _, _, a in actors if a()):
-                sentFrom.send((a, 'AVAILABLE_VOCAS', p.vocas))
+            for a, p in ((a(), self.registeredActors[a()]) for _, _, a in
+                         actors if a() and a() is not sentFrom and
+                         self.registeredActors.has_key(a())):
+
+                sentFrom.send((a, 'AVAILABLE_VOCAS', p.vocas, p.dialog))
                 break
         else:
-            raise RuntimeError("ERROR: The world got unknown message %s sent from %s"
-                               % (msg, sentFrom));
+            raise UnknownMessageError(msg, sentFrom)
             
     def printHarvestResult(self):
         global totalWood
@@ -436,9 +441,11 @@ class SWorld(SActor):
         totalGatherings = []
         for actor in list(self.registeredActors):
             #print self.channel, "--IDENTIFY_HARVEST_RESULT-->", actor
-            actor.send((self.channel, "IDENTIFY_HARVEST_RESULT", totalGatherings))
+            actor.send((self.channel, "IDENTIFY_HARVEST_RESULT",
+                        totalGatherings))
 
-        tgStr = ",".join([str(w['WOOD'] if w.has_key('WOOD') else 0) for w in totalGatherings])
+        tgStr = ",".join([str(w['WOOD'] if w.has_key('WOOD') else 0) for w in
+                          totalGatherings])
         print hex(hash(tgStr)), tgStr
         
     def killAll(self):

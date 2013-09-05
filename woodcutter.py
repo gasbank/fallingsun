@@ -1,8 +1,10 @@
 # coding=utf-8
 import random
+import weakref
 from collections import OrderedDict
 from actor import SActor, ActorProperties
 from level import TileNeighborhood4
+import kdtree
 
 class SWoodcutter(SActor):
     
@@ -110,7 +112,7 @@ class SWoodcutter(SActor):
         self._lastIntentionTime = -1
         self._intention = None
         self._waitGauge = None
-        self.home = home
+        self.home = weakref.ref(home) if home else None
         self.maxGatherings = maxGatherings
         self._starvationWaitGauge = None
         
@@ -151,15 +153,17 @@ class SWoodcutter(SActor):
         
         return None
     
-    def isMyHomeNeighbor(self, tileData, actors):
+    def isMyHomeNeighbor(self, ws):
         
-        return self.isNeighborTiles(tileData, self.getHomeProp(actors).location)
+        cenLoc = self.location
+        r = 1.5
+        Q = kdtree.Range(cenLoc[0]-r*32, cenLoc[1]-r*32, 32*(2*r+1), 32*(2*r+1))
+        
+        for _, _, a in ws.kdActorTree.rangePoints(Q):
+            if a is self.home:
+                return True
     
-    def getHomeProp(self, actors):
-        
-        homeList = [h for h in actors if h[0] is self.home]
-        assert len(homeList) == 1
-        return homeList[0][1]
+        return False
     
     def findClosestHarvestable(self, tileData, actors):
         harvestables = [h for h in actors if h[1].harvestable
@@ -168,8 +172,10 @@ class SWoodcutter(SActor):
         if harvestables:
             return min(harvestables, key=lambda h: self.manDistanceWithMe(h[1].location))
         
-        return None
+        return None, None
     
+    def doPathFindingPixelCoord(self, tileData, nextIntention, x, y):
+        self.doPathFinding(tileData, int(x//32), int(y//32), nextIntention)
 
     def doPathFinding(self, tileData, tileX, tileY, nextIntention):
                 
@@ -255,17 +261,17 @@ class SWoodcutter(SActor):
             pass
     
 
-    def doStockUpAllHarvestables(self, tileData, actors):
+    def doStockUpAllHarvestables(self, ws):
         
         STOCK_WAIT_COST = 20
         
-        if not self.gatherings or not self.isMyHomeNeighbor(tileData, actors):
+        if not self.gatherings or not self.isMyHomeNeighbor(ws):
             self.intention = 'PATHFINDING_HARVESTABLE'
             return
         
-        if self.gatherings and self.isMyHomeNeighbor(tileData, actors):
+        if self.gatherings and self.isMyHomeNeighbor(ws):
             
-            self.angle = self.getAngleTo(self.getHomeProp(actors).location)
+            self.angle = self.getAngleTo(ws.actorsDict[self.home()].location)
             
             if self.waitGauge is None:
                 self.waitGauge = STOCK_WAIT_COST
@@ -276,7 +282,7 @@ class SWoodcutter(SActor):
                 k = self.gatherings.iterkeys().next()
                 assert self.gatherings[k] > 0
                 self.gatherings[k] -= 1
-                self.home.send((self.channel, "ACQUIRE", k, 1))
+                self.home().send((self.channel, "ACQUIRE", k, 1))
                 if self.gatherings[k] <= 0:
                     del self.gatherings[k]
                 
@@ -285,108 +291,107 @@ class SWoodcutter(SActor):
 
     def drawFadeoutText(self, text):
         self.sendDisplay((self.channel, 'DRAW_FADEOUT_TEXT', text, self.location))
+        
+    def handleWorldState(self, ws, myProp):
+        
+        self.deltaTime = ws.time - self.time
+        self.time = ws.time
+        
+        self.location = myProp.location
+        
+        actors = ws.actors
+        tileData = ws.tileData
+        
+        if self.intention is 'ROAMING':
+            
+            if self.roamingTarget is None or self.isNear(self.roamingTarget):
+                self.roamingTarget = self.getRandomLocationAround(self.roamingRadius)
+            
+            self.angle = self.getAngleTo(self.roamingTarget)
+            
+            self.velocity = 2
+            
+            if self.stamina < 0:
+                self.intention = 'RESTING'
+                self.roamingTarget = None
+                
+            pass
+        
+        elif self.intention is 'RESTING':
+            
+            self.doResting()
+            
+        elif self.intention is 'PATHFINDING_HOME':
+            
+            homeProp = ws.actorsDict.get(self.home(), None) if self.home else None
+            if homeProp:
+                self.doPathFindingPixelCoord(tileData,
+                                             'STOCK_UP_ALL_HARVESTABLES',
+                                             *homeProp.location)
+            else:
+                self.intention = 'RESTING'
+            
+        elif self.intention is 'PATHFINDING_HARVESTABLE':
+            
+            h, hProp = self.findClosestHarvestable(tileData, actors)
+            
+            if h:
+                self.doPathFindingPixelCoord(tileData, 'HARVESTING',
+                                             *hProp.location)
+            else:
+                self.intention = 'RESTING'
+        
+        elif self.intention is 'HARVESTING':
+            
+            self.doHarvesting(tileData, actors)
+            
+        elif self.intention is 'STOCK_UP_ALL_HARVESTABLES':
+            
+            self.doStockUpAllHarvestables(ws)
+            
+            
+        else:
+            raise RuntimeError('%s: Unknown intention %s received.'
+                               % (self, self.intention))
+            
+        
+        #self.angle += 10.0 * (1.0 / msgArgs[0].updateRate)
+        if self.angle >= 360:
+            self.angle -= 360
+        elif self.angle < 0:
+            self.angle += 360
+            
+        updateMsg = (self.channel, "UPDATE_VECTOR",
+                     self.angle, self.velocity)
+        
+        #print self.angle
+        self.world.send(updateMsg)
+        
+        # 마지막에 깎자
+        self.stamina -= self.deltaTime
+        #self.world.send((self.channel, "UPDATE_MY_STAMINA", self.stamina))
+        
+        # If stamina remains below the negative value,
+        # the hitpoints will be decreased.
+        if self.staminaDepleted:
+            if self._starvationWaitGauge is None:
+                self._starvationWaitGauge = 2000
+            else:
+                self._starvationWaitGauge -= 1
+                
+            if self._starvationWaitGauge <= 0:
+                self.hitpoints -= 1
+                self._starvationWaitGauge = None
+                if self.dead:
+                    self.deathReason = 'STARVATION'
+        else:
+            self._starvationWaitGauge = None
     
     def defaultMessageAction(self, args):
         sentFrom, msg, msgArgs = args[0], args[1], args[2:]
         
         if msg == "WORLD_STATE":
-            
-            self.deltaTime = msgArgs[0].time - self.time
-            self.time = msgArgs[0].time
-            
-            actors = msgArgs[0].actors
-            tileData = msgArgs[0].tileData
-            
-            for actor in actors:
-                if actor[0] is self.channel: break
-                    
-            self.location = actor[1].location
-            
-            #print self.intention
-            
-            if self.intention is 'ROAMING':
-                
-                if self.roamingTarget is None or self.isNear(self.roamingTarget):
-                    self.roamingTarget = self.getRandomLocationAround(self.roamingRadius)
-                
-                self.angle = self.getAngleTo(self.roamingTarget)
-                
-                self.velocity = 2
-                
-                if self.stamina < 0:
-                    self.intention = 'RESTING'
-                    self.roamingTarget = None
-                    
-                pass
-            
-            elif self.intention is 'RESTING':
-                
-                self.doResting()
-                
-            elif self.intention is 'PATHFINDING_HOME':
-                                              
-                self.doPathFinding(tileData,
-                                   int(self.homeLocation[0]//32),
-                                   int(self.homeLocation[1]//32),
-                                   'STOCK_UP_ALL_HARVESTABLES')
-                
-            elif self.intention is 'PATHFINDING_HARVESTABLE':
-                
-                h = self.findClosestHarvestable(tileData, actors)
-                
-                if h:
-                    self.doPathFinding(tileData,
-                                       int(h[1].location[0]//32),
-                                       int(h[1].location[1]//32),
-                                       'HARVESTING')
-                else:
-                    self.intention = 'RESTING'
-            
-            elif self.intention is 'HARVESTING':
-                
-                self.doHarvesting(tileData, actors)
-                
-            elif self.intention is 'STOCK_UP_ALL_HARVESTABLES':
-                
-                self.doStockUpAllHarvestables(tileData, actors)
-                
-                
-            else:
-                raise RuntimeError('%s: Unknown intention %s received.'
-                                   % (self, self.intention))
-                
-            
-            #self.angle += 10.0 * (1.0 / msgArgs[0].updateRate)
-            if self.angle >= 360:
-                self.angle -= 360
-            elif self.angle < 0:
-                self.angle += 360
-                
-            updateMsg = (self.channel, "UPDATE_VECTOR",
-                         self.angle, self.velocity)
-            
-            #print self.angle
-            self.world.send(updateMsg)
-            
-            # 마지막에 깎자
-            self.stamina -= self.deltaTime
-            #self.world.send((self.channel, "UPDATE_MY_STAMINA", self.stamina))
-            
-            # If stamina remains below the negative value,
-            # the hitpoints will be decreased.
-            if self.staminaDepleted:
-                if self._starvationWaitGauge is None:
-                    self._starvationWaitGauge = 2000
-                else:
-                    self._starvationWaitGauge -= 1
-                    
-                if self._starvationWaitGauge <= 0:
-                    self.hitpoints -= 1
-                    self._starvationWaitGauge = None
-                    if self.dead:
-                        self.deathReason = 'STARVATION'
-            else:
-                self._starvationWaitGauge = None
+            self.handleWorldState(*msgArgs)
             
         elif msg == "COLLISION":
             pass

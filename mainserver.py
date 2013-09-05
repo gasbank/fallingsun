@@ -9,6 +9,7 @@ from tree import STree
 from server import SServer
 from sight import SSight
 from home import SHome
+from woodcutter import SWoodcutter
 from websocketserver import SWebSocketServer
 
 def getRandomActorTile(minX, minY, maxX, maxY):
@@ -32,14 +33,32 @@ def main():
     #
     # Initially joining actors
     #
-    STree(world, 'WOOD', location=(32*5+16,32*5+16), instanceName='TestTree')
-    SHome(world, location=(32*10+16,32*13+16), instanceName='WoodcutterHome')
-
+    #STree(world, 'WOOD', location=(32*5+16,32*5+16), instanceName='TestTree')
+    STree(world, 'WOOD', location=(32*5+16,32*15+16), instanceName='Tree',
+          hitpoints=3, hitpointsDecay=0)
+    
+    STree(world, 'WOOD', location=(32*11+16,32*7+16),
+          instanceName='FarawayTree', hitpoints=4, hitpointsDecay=0)
+    
+    STree(world, 'WOOD', location=(32*15+16,32*8+16), instanceName='VFTree',
+          hitpoints=15, hitpointsDecay=0)
+    
+    STree(world, 'WOOD', location=(32*6+16,32*5+16),
+          instanceName='HiddenTree', hitpoints=7, hitpointsDecay=0)
+    
+    
+    home = SHome(world, location=(32*10+16,32*13+16),
+                 instanceName='WoodcutterHome').channel
+    SWoodcutter(world, location=(32*0+16, 32*16+16), velocity=20, home=home,
+                instanceName='Woodcutter', roamingRadius=200, stamina=10,
+                maxStamina=1000, intention='PATHFINDING_HARVESTABLE',
+                display=None)
+    
     for i in range(10):
-        SPrey(world, location=getRandomActorTile(0,0,1,1),
-              velocity=20, angle=getRandomAngle(), instanceName='Prey%d'%i,
-              stamina=100, maxStamina=100,
-              roamingVelocity=random.randrange(25,35), intention='ROAMING')
+        SPrey(world, location=getRandomActorTile(0,0,1,1), velocity=20,
+              angle=getRandomAngle(), instanceName='Prey%d'%i, stamina=100,
+              maxStamina=100, roamingVelocity=random.randrange(25,35),
+              intention='ROAMING')
     
     #
     # Sight
@@ -48,11 +67,19 @@ def main():
     sightX, sightY = 14, 14
     sight = SSight(world, location=(32 * sightX, 32 * sightY),
                    instanceName='TestSight', sightRange=7).channel'''
-    you = SPrey(world, location=getRandomActorTile(10,13,11,14),
+    you = SPrey(world, location=getRandomActorTile(19,6,20,7),
                 velocity=20, angle=getRandomAngle(), instanceName='YOU',
                 stamina=100, maxStamina=100,
                 roamingVelocity=random.randrange(25,35),
                 intention='SYNCING').channel
+
+    #
+    # Quest Client (Äù½ºÆ® ÀÇ·ÚÀÎ)
+    #
+    SPrey(world, location=getRandomActorTile(19,5,20,6), velocity=20,
+          angle=180, instanceName='QuestClient', stamina=100, maxStamina=100,
+          roamingVelocity=random.randrange(25,35),
+          intention='SYNCING')#.attach(Dialog(1))
 
     #
     # Display

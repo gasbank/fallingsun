@@ -655,7 +655,7 @@ class SDisplayWindow(SActor):
         self.drawUpperBuildingTiles(self.mainSurface, ws)
         
         self._fadeoutTextManager.update(self.deltaTime)
-        self._comPanelManager.update(self.deltaTime)
+        self._comPanelManager.update(ws.actorsDict, self.deltaTime)
         
         screen.blit(self.mainSurface, (TS,TS))
         

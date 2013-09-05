@@ -4,6 +4,7 @@ import random
 import logging
 from actor import SActor, ActorProperties, UnknownMessageError
 import weakref
+import dialog
 
 class SPrey(SActor):
     
@@ -47,6 +48,7 @@ class SPrey(SActor):
         self.roamingPath = None
         self.restFor = 5
         self.clearVocaTarget()
+        self.dialog = dialog.Dialog()
         
         self.world.send((self.channel, "JOIN",
                          ActorProperties(self.__class__.__name__,
@@ -57,7 +59,8 @@ class SPrey(SActor):
                                          width=16,
                                          hitpoints=self.hitpoints,
                                          animatedSprite=True,
-                                         instanceName=self.instanceName)))
+                                         instanceName=self.instanceName,
+                                         dialog=self.dialog)))
 
         self.changeIntention(intention)
         
@@ -150,13 +153,13 @@ class SPrey(SActor):
         self.stamina -= self.deltaTime
     
     
-    def handleMyVoca(self, sentFrom, vocas):
+    def handleMyVoca(self, sentFrom, vocas, dialog):
         self._vocaTarget = weakref.ref(sentFrom)
         self._vocas = list(vocas)
         
         if self._display:
-            self._display.send((self.channel, 'SET_VOCAS', str(sentFrom),
-                                sentFrom, vocas))
+            self._display.send((self.channel, 'SET_VOCAS', str(sentFrom.name),
+                                sentFrom, vocas, dialog))
 
     def clearVocaTarget(self):
         self._vocaTarget = None
@@ -167,9 +170,9 @@ class SPrey(SActor):
 
     def handleVocaChosen(self, chosen):
         if self._vocaTarget and self._vocaTarget():
-            assert self._vocas
-            v = self._vocas[chosen]
-            self._vocaTarget().send((self.channel, 'REQUEST_VOCA', v))
+            if self._vocas:
+                v = self._vocas[chosen]
+                self._vocaTarget().send((self.channel, 'REQUEST_VOCA', v))
     
     def defaultMessageAction(self, args):
         sentFrom, msg, msgArgs = args[0], args[1], args[2:]
