@@ -1,8 +1,10 @@
 import stackless  # @UnresolvedImport
-from actor import SActor, ActorProperties, NamedTasklet, NamedChannel
+from actor import SActor, ActorProperties, NamedTasklet, NamedChannel, UnknownMessageError
 
 class SHome(SActor):
-    def __init__(self, world, location=(0,0), instanceName="", staminaRefillSpeed=6):
+    def __init__(self, world, location=(0,0), instanceName="",
+                 staminaRefillSpeed=6):
+        
         SActor.__init__(self, instanceName)
         self.time = 0
         self.deltaTime = 0
@@ -13,6 +15,8 @@ class SHome(SActor):
         self.tasklets = {}
         self.debug('Created.')
         
+        vocas = set(['REST', 'DESTROY', 'SEARCH', 'STEAL'])
+        
         self.world.send((self.channel, "JOIN",
                          ActorProperties(self.__class__.__name__,
                                          location=location,
@@ -22,7 +26,8 @@ class SHome(SActor):
                                          width=32,
                                          staticSprite=True,
                                          hitpoints=10,
-                                         instanceName=self.instanceName)))
+                                         instanceName=self.instanceName,
+                                         vocas=vocas)))
     
     def taskAddStamina(self, channel, target):
         while 1:
@@ -35,8 +40,9 @@ class SHome(SActor):
     def defaultMessageAction(self, args):
         sentFrom, msg, msgArgs = args[0], args[1], args[2:]
         if msg == 'WORLD_STATE':
-            self.deltaTime = msgArgs[0].time - self.time
-            self.time = msgArgs[0].time
+            ws = msgArgs[0]
+            self.deltaTime = ws.time - self.time
+            self.time = ws.time
             
             for k,v in self.tasklets.iteritems():
                 v.send(None)
@@ -82,3 +88,11 @@ class SHome(SActor):
                 c.name = str(newlyEntered)+':AddStamina'
                 self.tasklets[c.name] = c
                 NamedTasklet(self.taskAddStamina)(c, newlyEntered)
+        elif msg == 'REQUEST_VOCA':
+            if msgArgs[0] == 'DESTROY':
+                self.deathReason = 'ATTACKING'
+                self.world.send((self.channel, 'KILLME'))
+        elif msg == 'YOU_ARE_DEAD':
+            self.info('I am dead by %s.' % self.deathReason)
+        else:
+            raise UnknownMessageError(msg, sentFrom)

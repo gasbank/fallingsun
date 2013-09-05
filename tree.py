@@ -31,6 +31,8 @@ class STree(SActor):
         self.gatheringName = gatheringName
         self.hitpointsDecay = hitpointsDecay
         
+        vocas = set(['HARVEST', 'DESTROY', 'CULTIVATE'])
+        
         self.debug('Created.')
         
         self.world.send((self.channel, "JOIN",
@@ -42,7 +44,8 @@ class STree(SActor):
                                          width=32,
                                          harvestable=self.harvestable,
                                          staticSprite=True,
-                                         instanceName=self.instanceName)))
+                                         instanceName=self.instanceName,
+                                         vocas=vocas)))
         
         self.hitpoints = hitpoints
                 

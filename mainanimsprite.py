@@ -17,7 +17,7 @@ def main():
     # world = SWorld(disableCollisionCheck=True).channel
     world = SWorld(useTestData=True).channel
 
-    display = SDisplayWindow(world).channel
+    display = SDisplayWindow(world, swidth=32*23, sheight=32*23).channel
     
     '''
     for i in range(10):

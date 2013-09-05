@@ -222,7 +222,10 @@ class SWoodcutter(SActor):
         
         # If we have a valid target then subtract some wait gauge.
         if self.harvestTarget and self.harvestTargetProp.harvestable:
-            self.waitGauge -= 0.25
+            if self.waitGauge <= 0:
+                self.waitGauge = HARVEST_WAIT_COST
+            else:
+                self.waitGauge -= 0.25
             
             if self.waitFinished:
             
@@ -231,7 +234,7 @@ class SWoodcutter(SActor):
                 self.harvestTarget.send((self.channel, "HARVEST"))
                 
                 # Refill the wait gauge.
-                self.waitGauge = HARVEST_WAIT_COST
+                #self.waitGauge = HARVEST_WAIT_COST
         
         else:
             if self.gatherings:

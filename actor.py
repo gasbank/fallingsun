@@ -72,19 +72,28 @@ class SActor(object):
         
         global gTasklets
         gTasklets.append(weakref.ref(t))
-        
+
     def getTaskletName(self):
         return self.instanceName
     
     def processMessage(self):
-        while 1:
-            msgs = []
-            msgs.append(self.channel.receive())
+        try:
+            while 1:
+                msgs = []
+                msgs.append(self.channel.receive())
+                
+                while msgs:
+                    while self.channel.balance > 0:
+                        msgs.append(self.channel.receive())
+                    self.processMessageMethod(msgs.pop(0))
+        except TaskletExit:
+            # No more reference to the channel by the actor.
+            # (Others may temporarily have the reference, though.)
+            del self.channel
             
-            while msgs:
-                while self.channel.balance > 0:
-                    msgs.append(self.channel.receive())
-                self.processMessageMethod(msgs.pop(0))
+            # TaskletExit exception should be propagated
+            # to the stackless scheduler.
+            raise TaskletExit
             
     def defaultMessageAction(self, args):
         pass
@@ -186,7 +195,7 @@ class ActorProperties:
                  width=-1, hitpoints=1, public=True, harvestable=False,
                  physical=True, animatedSprite=False, instanceName='',
                  tickEvent=True, staticSprite=False, sightRange=0,
-                 blankType=None, waitGauge=None):
+                 blankType=None, waitGauge=None, vocas=None):
         
         self.name = name
         self.location = location
@@ -208,3 +217,5 @@ class ActorProperties:
         self.neighbored = set()
         self.sightRange = sightRange
         self.blankType = blankType
+        self.vocas = vocas or set()
+        

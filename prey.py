@@ -2,7 +2,8 @@
 import stackless  # @UnresolvedImport
 import random
 import logging
-from actor import SActor, ActorProperties
+from actor import SActor, ActorProperties, UnknownMessageError
+import weakref
 
 class SPrey(SActor):
     
@@ -45,6 +46,8 @@ class SPrey(SActor):
         self.restingHome = None
         self.roamingPath = None
         self.restFor = 5
+        self.clearVocaTarget()
+        
         self.world.send((self.channel, "JOIN",
                          ActorProperties(self.__class__.__name__,
                                          location=location,
@@ -147,11 +150,65 @@ class SPrey(SActor):
         self.stamina -= self.deltaTime
     
     
+    def handleMyVoca(self, sentFrom, vocas):
+        self._vocaTarget = weakref.ref(sentFrom)
+        self._vocas = list(vocas)
+        
+        if self._display:
+            self._display.send((self.channel, 'SET_VOCAS', str(sentFrom),
+                                sentFrom, vocas))
+
+    def clearVocaTarget(self):
+        self._vocaTarget = None
+        self._vocas = None
+        
+        if self._display:
+            self._display.send((self.channel, 'CLEAR_VOCAS'))
+
+    def handleVocaChosen(self, chosen):
+        if self._vocaTarget and self._vocaTarget():
+            assert self._vocas
+            v = self._vocas[chosen]
+            self._vocaTarget().send((self.channel, 'REQUEST_VOCA', v))
+    
     def defaultMessageAction(self, args):
-        _, msg, msgArgs = args[0], args[1], args[2:]
+        sentFrom, msg, msgArgs = args[0], args[1], args[2:]
         
         if msg == "WORLD_STATE":
             self.handleWorldState(*msgArgs)
             
         elif msg == "COLLISION":
             pass
+        elif msg == 'I_AM_DISPLAY':
+            self._display = sentFrom
+        elif msg == 'MOVE_PAWN':
+            
+            direction, pressed = msgArgs
+            if pressed: return
+            
+            if direction == 'N':
+                dLoc = (0,-32)
+            elif direction == 'E':
+                dLoc = (32,0)
+            elif direction == 'S':
+                dLoc = (0,32)
+            elif direction == 'W':
+                dLoc = (-32,0)
+            else:
+                raise RuntimeError('Unknown direction %s', direction)
+
+            self.world.send((self.channel, 'REQUEST_RELATIVE_TELEPORT', dLoc))
+            pass
+        elif msg == 'F_PRESSED':
+            if msgArgs[0]:
+                self.world.send((self.channel, 'QUERY_NEIGHBORS_VOCA', 1))
+        elif msg == 'VOCA_CHOSEN':
+            self.handleVocaChosen(msgArgs[0])
+        elif msg == 'TELEPORTED':
+            self.clearVocaTarget()
+        elif msg == 'QUERY_RESULT':
+            pass
+        elif msg == 'AVAILABLE_VOCAS':
+            self.handleMyVoca(sentFrom, *msgArgs)
+        else:
+            raise UnknownMessageError(msg, sentFrom)

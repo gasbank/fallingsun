@@ -4,6 +4,7 @@ import pygame
 import os
 from sight import SSight
 import stackless
+from companel import ComPanelManager
 
 TS = 32  # Tile Size
 STS = 16  # Sub-Tile Size
@@ -19,9 +20,11 @@ KEYPAD_KEY_MAPPING = {pygame.K_KP4:WEST,
                       pygame.K_KP8:NORTH,
                       pygame.K_KP2:SOUTH}
 
+COM_PANEL_HEIGHT = TS*5
+
 class FadeoutText(object):
-    def __init__(self, font, text, location, maxAge=5.0, color=(0,0,0),
-                 maxOffset=10.0):
+    def __init__(self, screen, font, text, location, maxAge, color, maxOffset):
+        self._screen = screen
         self._label = font.render(text, 1, color)
         self._age = 0
         self._maxAge = maxAge
@@ -41,12 +44,31 @@ class FadeoutText(object):
     def dead(self):
         return self._age >= self._maxAge
         
-    def draw(self, deltaTime):
+    def draw(self, display, deltaTime):
         if not self.dead:
-            screen = pygame.display.get_surface()
-            screen.blit(self._label, self.location)
+            loc = display.getTileBlitLocFromPixelSpace(self.location)
+            self._screen.blit(self._label, loc)
             self._age += deltaTime
 
+class FadeoutTextManager(object):
+    
+    def __init__(self, display):
+        self._texts = []
+        self._display = display
+    
+    def addText(self, screen, font, text, location, maxAge=5.0, color=(0,0,0),
+                maxOffset=10.0):
+        
+        ft = FadeoutText(screen, font, text, location, maxAge, color,
+                         maxOffset)
+        self._texts.append(ft)
+        
+    def update(self, deltaTime):
+        for t in self._texts:
+            t.draw(self._display, deltaTime)
+                    
+        self._texts = [t for t in self._texts if not t.dead]
+    
         
 class SDisplayWindow(SActor):
     @property
@@ -59,7 +81,7 @@ class SDisplayWindow(SActor):
     def camLastTile(self):
         return (int((-self.camX+self.swidth)//TS)+1,
                 int((-self.camY+self.sheight)//TS)+1)
-
+        
     def __init__(self, world, windowTitle='Falling Sun', client=None,
                  swidth=TS*10, sheight=TS*10, sightedActorsOnly=False):
         SActor.__init__(self, 'DisplayWindow')
@@ -83,10 +105,9 @@ class SDisplayWindow(SActor):
         
         pygame.init()
         pygame.display.set_caption(windowTitle)
-        pygame.display.set_mode((swidth+TS*2, sheight+TS*2))
+        pygame.display.set_mode((swidth+TS*2, sheight+TS*2+COM_PANEL_HEIGHT))
         self.mainSurface = pygame.Surface((TS*VPX,TS*VPY))
         
-        self._fadeoutTexts = []
         self.font = pygame.font.Font('C:\windows\Fonts\GULIM.TTC', 10)
         self.bigFont = pygame.font.Font('C:\windows\Fonts\ARIALNBI.ttf', 12)
         self.dustRoadTile = pygame.image.load(os.path.join('data', '004-G_Ground02.png'))
@@ -96,6 +117,9 @@ class SDisplayWindow(SActor):
         self.thiefTile = pygame.image.load(os.path.join('data', '018-Thief03.png'))
         self.farmerTile = pygame.image.load(os.path.join('data', '143-Farmer01.png'))
         self.headmanTile = pygame.image.load(os.path.join('data', '109-Civilian09.png'))
+
+        self._fadeoutTextManager = FadeoutTextManager(self)
+        self._comPanelManager = ComPanelManager()
         
         self.world.send((self.channel, "JOIN",
                          ActorProperties(self.__class__.__name__,
@@ -105,7 +129,7 @@ class SDisplayWindow(SActor):
         
         if client:
             client.send((self.channel, 'I_AM_DISPLAY'))
-            
+        
         NamedTasklet(self.pygameEventLoop)()
         
         self.debug('Created.')
@@ -116,8 +140,8 @@ class SDisplayWindow(SActor):
             self.updateDisplay(msgArgs)
             pass
         elif msg == 'DRAW_FADEOUT_TEXT':
-            self._fadeoutTexts.append(FadeoutText(self.bigFont, msgArgs[0],
-                                                  msgArgs[1]))
+            self._fadeoutTextManager.addText(self.mainSurface,self.bigFont,
+                                             msgArgs[0], msgArgs[1])
         elif msg == 'WORLD_SIZE':
             icon = pygame.image.load(os.path.join('data', 'fighter.ico')).convert_alpha()
             pygame.display.set_icon(icon)
@@ -125,6 +149,10 @@ class SDisplayWindow(SActor):
         elif msg == 'SIGHTED_ACTORS':
             if self.sightedActorsOnly:
                 self.sightedActors = msgArgs[0]
+        elif msg == 'SET_VOCAS':
+            self._comPanelManager.setVocas(*msgArgs)
+        elif msg == 'CLEAR_VOCAS':
+            self._comPanelManager.clear()
         else:
             raise RuntimeError('Unknown message: %s' % msg)
 
@@ -140,10 +168,9 @@ class SDisplayWindow(SActor):
                     self.world.send((self.channel, "CLOSE_WINDOW"))
                     doLoop = False
                 
-                if self._client:
-                    self.handleMoveKeyEvent(event)
+                self.handleKeyEvent(event)
 
-            stackless.schedule()                    
+            stackless.schedule()
             
         
     def getIcon(self, iconName):
@@ -508,8 +535,8 @@ class SDisplayWindow(SActor):
             nameplateLoc[1] += label.get_height()
     
         # The wait gauge
-        if actorProp.waitGauge > 0:
-            
+        if actorProp.waitGauge >= 1:
+            #print actorProp.waitGauge 
             pygame.draw.rect(screen, (0, 0, 255),
                              pygame.Rect(nameplateLoc[0],
                                          nameplateLoc[1],
@@ -538,14 +565,6 @@ class SDisplayWindow(SActor):
             elif p.name == 'SSight':
                 self.drawSightDebug(screen, p)
     
-    
-    def drawFadeoutTexts(self, screen):
-        for ft in self._fadeoutTexts:
-            ft.draw(self.deltaTime)
-    
-        self._fadeoutTexts = [ft for ft in self._fadeoutTexts if not ft.dead]
-    
-
     def drawGridDebug(self, screen):
         
         for tx in range(self.camOriginTile[0], self.camLastTile[0]):
@@ -559,17 +578,24 @@ class SDisplayWindow(SActor):
                 label = self.font.render('%d,%d'%(tx,ty), 1, (0, 0, 0))
                 screen.blit(label, self.getTileBlitLoc((tx, ty)))
     
-    def handleMoveKeyEvent(self, event):
+    def handleKeyEvent(self, event):
         if event.type in [pygame.KEYDOWN, pygame.KEYUP]:
             
             pressed = event.type == pygame.KEYDOWN
             
             arrowAction = ARROW_KEY_MAPPING.get(event.key, None)
             if arrowAction is not None:
-                #self.info('MOVE_PAWN about to send...')
-                self._client.send((self.channel, 'MOVE_PAWN', arrowAction,
-                                   pressed))
-                #self.info('MOVE_PAWN sent!')
+                if self._client:
+                    self._client.send((self.channel, 'MOVE_PAWN', arrowAction,
+                                       not pressed))
+                
+            if event.key == pygame.K_f:
+                self._client.send((self.channel, 'F_PRESSED', pressed))
+                
+            if event.key in [pygame.K_1, pygame.K_2, pygame.K_3, pygame.K_4]:
+                if pressed:
+                    self._client.send((self.channel, 'VOCA_CHOSEN',
+                                       event.key - pygame.K_1))
             
             kpAction = KEYPAD_KEY_MAPPING.get(event.key, None)
             if kpAction is not None:
@@ -620,24 +646,24 @@ class SDisplayWindow(SActor):
         tileO = tuple((v*TS for v in self.camOriginTile))
         self.camOff = tuple((tileO[i] - self.camOrigin[i] for i in range(2)))
         
+        self.drawTerrainTiles(self.mainSurface, ws)
+        self.drawGridDebug(self.mainSurface)
+        self.drawCollisionTiles(self.mainSurface, ws)
+        #self.drawPathFindTest(self.mainSurface, ws)
+        self.drawGroundBuildingTiles(self.mainSurface, ws)
+        self.drawActors(self.mainSurface, ws)
+        self.drawUpperBuildingTiles(self.mainSurface, ws)
         
-        screen = self.mainSurface
+        self._fadeoutTextManager.update(self.deltaTime)
+        self._comPanelManager.update(self.deltaTime)
         
-        self.drawTerrainTiles(screen, ws)
-        self.drawGridDebug(screen)
-        self.drawCollisionTiles(screen, ws)
-        #self.drawPathFindTest(screen, ws)
-        self.drawGroundBuildingTiles(screen, ws)
-        self.drawActors(screen, ws)
-        self.drawUpperBuildingTiles(screen, ws)
-        self.drawFadeoutTexts(screen)
-        
-        screen = pygame.display.get_surface()
         screen.blit(self.mainSurface, (TS,TS))
         
         label = self.font.render('TL Origin %s' % str(self.camOrigin),
                                  1, (0, 0, 0))
         screen.blit(label, (0, 0))
+        
+        screen.blit(self._comPanelManager.panel, (TS, (2+self.sheight//TS)*TS)) 
         
         pygame.display.flip()
         

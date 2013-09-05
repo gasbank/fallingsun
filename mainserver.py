@@ -1,6 +1,7 @@
 import stackless  # @UnresolvedImport
 import random
 import logging
+import weakref
 from world import SWorld
 from displaywindow import SDisplayWindow
 from prey import SPrey
@@ -31,30 +32,34 @@ def main():
     #
     # Initially joining actors
     #
-    STree(world, 'WOOD', location=(32*5,32*5), instanceName='TestTree')
-    
-    home = SHome(world, location=(32 * 10, 32 * 13),
-                 instanceName='WoodcutterHome')
+    STree(world, 'WOOD', location=(32*5+16,32*5+16), instanceName='TestTree')
+    SHome(world, location=(32*10+16,32*13+16), instanceName='WoodcutterHome')
 
     for i in range(10):
-        SPrey(world, location=getRandomActorTile(0,0,23,23),
+        SPrey(world, location=getRandomActorTile(0,0,1,1),
               velocity=20, angle=getRandomAngle(), instanceName='Prey%d'%i,
               stamina=100, maxStamina=100,
-              roamingVelocity=random.randrange(25,35), intention='SYNCING')
+              roamingVelocity=random.randrange(25,35), intention='ROAMING')
     
     #
     # Sight
     #
+    '''
     sightX, sightY = 14, 14
     sight = SSight(world, location=(32 * sightX, 32 * sightY),
-                   instanceName='TestSight', sightRange=7).channel
+                   instanceName='TestSight', sightRange=7).channel'''
+    you = SPrey(world, location=getRandomActorTile(10,13,11,14),
+                velocity=20, angle=getRandomAngle(), instanceName='YOU',
+                stamina=100, maxStamina=100,
+                roamingVelocity=random.randrange(25,35),
+                intention='SYNCING').channel
 
     #
     # Display
     #
     SDisplayWindow(world, windowTitle='Falling Sun Server',
-                   swidth=32*23, sheight=32*23, client=sight,
-                   sightedActorsOnly=True)
+                   swidth=32*23, sheight=32*15, client=you,
+                   sightedActorsOnly=False)
 
     #
     # Servers

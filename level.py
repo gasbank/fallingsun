@@ -26,6 +26,9 @@ class TileLevel(object):
         #self.placeTent(16,17)
         #self.placeTent(16,17)
     
+    def getCellDataPixelCoord(self, x, y):
+        return self.getCellData(int(x//32), int(y//32))
+    
     def getCellData(self, tx, ty):
         t = self.terrain[ty][tx] if 0<=tx<self.width and 0<=ty<self.height else TERRAIN_GRASS
         b = self.building[ty][tx] if 0<=tx<self.width and 0<=ty<self.height else 0
@@ -88,8 +91,8 @@ class TileLevel(object):
                         [0, 1, 0, 1, 1, 1, 0, 0, 1, 1, 0, 0, 2, 1,0,2,0,0,0,0],
                         [0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 2, 1,0,2,0,0,0,0],
                         [0, 1, 1, 1, 0, 1, 0, 0, 0, 0, 0, 0, 2, 2,2,2,0,0,0,0],
-                        [0, 1, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0,0,2,0,0,0,0],
-                        [0, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0,0,2,0,0,0,0],
+                        [0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0,0,2,0,0,0,0],
+                        [0, 1, 1, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0,0,2,0,0,0,0],
                         [0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0,0,2,0,0,0,0],
                         [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 1, 2, 2,2,2,0,0,0,0],
                         [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 1, 2, 0,0,0,0,0,0,0],
@@ -160,6 +163,9 @@ class TileLevel(object):
         
         return r
     
+    def isMovablePixelCoord(self, x, y):
+        return self.isMovable(int(x//32), int(y//32))
+        
     def isMovable(self, tx, ty):
         t, _, c = self.getCellData(tx, ty)
         return t != 1 and c == 0

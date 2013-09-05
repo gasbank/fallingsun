@@ -68,28 +68,28 @@ class SWorld(SActor):
                 
     def killDeadActors(self):
         
-        for actor in list(self.aboutToBeKilledActors):
+        while self.aboutToBeKilledActors:
+            actor, prop = self.aboutToBeKilledActors.popitem()
+            
             actor.send((self.channel, 'YOU_ARE_DEAD'))
             actor.send_exception(TaskletExit)
             
-            if self.registeredActors[actor].staticSprite:
+            if prop.staticSprite:
                 
-                if self.registeredActors[actor].name == 'STree':
+                if prop.name == 'STree':
                     
-                    self.tileData.placeTree(int(self.registeredActors[actor].location[0]//32),
-                                            int(self.registeredActors[actor].location[1]//32),
+                    self.tileData.placeTree(int(prop.location[0]//32),
+                                            int(prop.location[1]//32),
                                             False)
                     
-                elif self.registeredActors[actor].name == 'SHome':
+                elif prop.name == 'SHome':
                     
-                    self.tileData.placeTent(int(self.registeredActors[actor].location[0]//32),
-                                            int(self.registeredActors[actor].location[1]//32),
+                    self.tileData.placeTent(int(prop.location[0]//32),
+                                            int(prop.location[1]//32),
                                             False)
             
-            self.info('%s about to be destroyed.' % self.registeredActors[actor].instanceName)
+            self.info('%s about to be destroyed.' % prop.instanceName)
             del self.registeredActors[actor]
-        
-        self.aboutToBeKilledActors.clear()
         
     def testForCollisions(self, x, y, otherActors=[]):
         collisions = []
@@ -123,10 +123,9 @@ class SWorld(SActor):
                 
         
     def updateActorPosition(self):
-        actorPositions = []
+        actorPositions = [] if not self.disableCollisionCheck else None 
         
-        for actor in list(self.registeredActors):
-            actorProp = self.registeredActors[actor]
+        for actor, actorProp in self.registeredActors.iteritems():
             if actorProp.public:
                 x, y = actorProp.location
                 angle = actorProp.angle
@@ -137,20 +136,19 @@ class SWorld(SActor):
                 x += dx / self.updateRate
                 y -= dy / self.updateRate
                 
-                if not self.disableCollisionCheck:
+                if actorPositions:
                     self.collisionCheck(x, y, actor, actorProp, actorPositions)
+                    
+                    actorPositions.append((actor,) + actorProp.location)
                 
                 actorProp.location = (x, y)
-                actorPositions.append((actor, 
-                                       actorProp.location[0], 
-                                       actorProp.location[1]))
             
     def sendWorldStateToActors(self, startTime):
         ws = WorldState(self.updateRate, startTime, self.tileData)
-        for actor in self.registeredActors:
-            if self.registeredActors[actor].public:
-                ws.actors.append((actor, self.registeredActors[actor]))
-                ws.actorsDict[actor] = self.registeredActors[actor]
+        for actor, prop in self.registeredActors.iteritems():
+            if prop.public:
+                ws.actors.append((actor, prop))
+                ws.actorsDict[actor] = prop
         
         for actor, prop in self.registeredActors.iteritems():
             self.debug('%s --WORLD_STATE--> %s' % (self.channel, actor))
@@ -339,36 +337,39 @@ class SWorld(SActor):
         
         self.info('%s joined the world.' % prop.instanceName)
     
+    def queryRectRange(self, cenLoc, r):
+        
+        Q = kdtree.Range(cenLoc[0]-r*32, cenLoc[1]-r*32, 32*(2*r+1), 32*(2*r+1))
+        return self.kdActorTree.rangePoints(Q)
     
     def handleQueryRectRange(self, sentFrom, cenLoc, r):
         
         if cenLoc is None:
             cenLoc = self.registeredActors[sentFrom].location
         
-        #self.info('QUERY_RANGE_RECT detected.')
-        Q = kdtree.Range(cenLoc[0]-r*32, cenLoc[1]-r*32, 32*(2*r+1), 32*(2*r+1))
-        points = self.kdActorTree.rangePoints(Q)
-        #self.info('QUERY_RESULT about to send...')
-        sentFrom.send((self.channel, 'QUERY_RESULT', points))
-        #self.info('QUERY_RESULT sent!')
-    
+        sentFrom.send((self.channel, 'QUERY_RESULT',
+                       self.queryRectRange(cenLoc, r)))
+        
     def defaultMessageAction(self, args):
+        #print args
+        
         sentFrom, msg, msgArgs = args[0], args[1], args[2:]
         if msg == 'JOIN':
             self.handleJoin(sentFrom, msgArgs[0])
             
         elif msg == 'UPDATE_VECTOR':
-            oldAngle = self.registeredActors[sentFrom].angle
-            oldVelocity = self.registeredActors[sentFrom].velocity
+            prop = self.registeredActors[sentFrom]
+            oldAngle = prop.angle
+            oldVelocity = prop.velocity
             
             if abs(oldAngle - msgArgs[0]) > 5 or abs(oldVelocity - msgArgs[1]) > 1: 
-                self.registeredActors[sentFrom].angle = msgArgs[0]
-                self.registeredActors[sentFrom].velocity = msgArgs[1]
+                prop.angle = msgArgs[0]
+                prop.velocity = msgArgs[1]
                 
-                for a,p in list(self.registeredActors[sentFrom].neighbored):
+                for a, p in list(prop.neighbored):
                     if a() and p() and p().name == 'SSight':
                         a().send((self.channel, 'UPDATE_VECTOR_OF_NEIGHBORS',
-                                (sentFrom, self.registeredActors[sentFrom])))
+                                (sentFrom, prop)))
              
         elif msg == 'UPDATE_HARVESTABLE':
             self.registeredActors[sentFrom].harvestable = msgArgs[0]                
@@ -418,6 +419,13 @@ class SWorld(SActor):
             self.relativeTeleportActor(sentFrom, msgArgs[0])
         elif msg == 'QUERY_RECT_RANGE':
             self.handleQueryRectRange(sentFrom, *msgArgs)
+        elif msg == 'QUERY_NEIGHBORS_VOCA':
+            loc = self.registeredActors[sentFrom].location
+            actors = self.queryRectRange(loc, msgArgs[0])
+            #print actors
+            for a, p in ((a(), self.registeredActors[a()]) for _, _, a in actors if a()):
+                sentFrom.send((a, 'AVAILABLE_VOCAS', p.vocas))
+                break
         else:
             raise RuntimeError("ERROR: The world got unknown message %s sent from %s"
                                % (msg, sentFrom));
@@ -438,16 +446,15 @@ class SWorld(SActor):
             actor.send_exception(TaskletExit)
             
     def getharvestables(self):
-        return [k for k,v in self.registeredActors.items() if v.harvestable]
+        return [k for k,v in self.registeredActors.iteritems() if v.harvestable]
     
     def teleportActor(self, actor, location):
-        self.registeredActors[actor].location = location
+        if self.tileData.isMovablePixelCoord(*location):
+            self.registeredActors[actor].location = location
+            actor.send((self.channel, 'TELEPORTED', location))
         
     def relativeTeleportActor(self, actor, dLoc):
-        #self.info('REQUEST_RELATIVE_TELEPORT detected.')
         loc = self.registeredActors[actor].location
         newLoc = (loc[0] + dLoc[0], loc[1] + dLoc[1])
-        self.registeredActors[actor].location = newLoc
-        #self.info('TELEPORTED about to send...')
-        actor.send((self.channel, 'TELEPORTED', newLoc))
-        #self.info('TELEPORTED sent!')
+        self.teleportActor(actor, newLoc)
+        
