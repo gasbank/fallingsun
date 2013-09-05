@@ -57,6 +57,8 @@ setInterval(draw, 50);
 window.onkeydown = keydownControl;
 window.onkeyup = keyupControl
 
+var pawnVelocity = 50;
+
 function keydownControl(e) {
     if(e.keyCode==37) {
         mx = -2;
@@ -64,7 +66,7 @@ function keydownControl(e) {
         yIndex=1;
         
         if (ownedActorId != 0) {
-            var cmd = ['UPDATE_VECTOR', [ownedActorId, [90*3, 2]]];
+            var cmd = ['UPDATE_VECTOR', [ownedActorId, [90*3, pawnVelocity]]];
             ws.send(JSON.stringify(cmd))
         }
     } else
@@ -74,7 +76,7 @@ function keydownControl(e) {
         yIndex=3;
         
         if (ownedActorId != 0) {
-            var cmd = ['UPDATE_VECTOR', [ownedActorId, [90*0, 2]]];
+            var cmd = ['UPDATE_VECTOR', [ownedActorId, [90*0, pawnVelocity]]];
             ws.send(JSON.stringify(cmd))
         }
     } else if
@@ -84,7 +86,7 @@ function keydownControl(e) {
         yIndex=2;
         
         if (ownedActorId != 0) {
-            var cmd = ['UPDATE_VECTOR', [ownedActorId, [90*1, 2]]];
+            var cmd = ['UPDATE_VECTOR', [ownedActorId, [90*1, pawnVelocity]]];
             ws.send(JSON.stringify(cmd))
         }
     } else
@@ -94,7 +96,7 @@ function keydownControl(e) {
         yIndex=0;
         
         if (ownedActorId != 0) {
-            var cmd = ['UPDATE_VECTOR', [ownedActorId, [90*2, 2]]];
+            var cmd = ['UPDATE_VECTOR', [ownedActorId, [90*2, pawnVelocity]]];
             ws.send(JSON.stringify(cmd))
         }
     }
@@ -156,20 +158,21 @@ function draw() {
     
     if (actors[a].angle < 0) actors[a].angle += 360;
     
-    xIndex = ~~((Math.abs(mx)+Math.abs(my)) * actors[a].velocity * frameCount/10) % 4;
+    var velocityDiv = 7.0;
+    xIndex = ~~((Math.abs(mx)+Math.abs(my)) * actors[a].velocity/velocityDiv * frameCount/10) % 4;
     angle = actors[a].angle
     if (270+45 <= angle || 0 <= angle && angle <= 45) {
         yIndex = 3;
-        actors[a].location[1] -= actors[a].velocity;
+        actors[a].location[1] -= actors[a].velocity/velocityDiv;
     } else if (45 <= angle && angle <= 90+45) {
         yIndex = 2;
-        actors[a].location[0] += actors[a].velocity;
+        actors[a].location[0] += actors[a].velocity/velocityDiv;
     } else if (90+45 <= angle && angle <= 90+90+45) {
         yIndex = 0;
-        actors[a].location[1] += actors[a].velocity;
+        actors[a].location[1] += actors[a].velocity/velocityDiv;
     } else {
         yIndex = 1;
-        actors[a].location[0] -= actors[a].velocity;
+        actors[a].location[0] -= actors[a].velocity/velocityDiv;
     }
     
     if (actors[a].name == 'SHeadman') {
@@ -206,7 +209,7 @@ var actors = {}
 var ownedActorId = 0;
 
 //var ws = new WebSocket("ws://localhost:8888/ws");
-var ws = new WebSocket("ws://localhost:3001/");
+var ws = new WebSocket("ws://14.49.42.133:3001/");
 ws.onopen = function() {
     //alert('connected!')
     //ws.send("['HELLO',0]");
@@ -238,7 +241,7 @@ ws.onmessage = function(evt) {
     } else if (cmd[0] == 'OWNERSHIP') {
         ownedActorId = cmd[1];
     } else if (cmd[0] == 'CHAT') {
-        logger.innerHTML += cmd[1] + '\n';
+        logger.value += cmd[1] + '\n';
         logger.scrollTop = logger.scrollHeight;
     }
 }
