@@ -1,3 +1,4 @@
+#coding:utf-8
 import stackless  # @UnresolvedImport
 import random
 import logging
@@ -11,6 +12,7 @@ from sight import SSight
 from home import SHome
 from woodcutter import SWoodcutter
 from websocketserver import SWebSocketServer
+import dialog
 
 def getRandomActorTile(minX, minY, maxX, maxY):
     return tuple(32 * random.randrange(m,M) + 16 for m,M in [(minX, maxX),
@@ -74,12 +76,20 @@ def main():
                 intention='SYNCING').channel
 
     #
-    # Quest Client (ƒ˘Ω∫∆Æ ¿«∑⁄¿Œ)
+    # ÎßâÏ¥å Î≥¥Ï¢åÍ¥Ä
     #
     SPrey(world, location=getRandomActorTile(19,5,20,6), velocity=20,
-          angle=180, instanceName='QuestClient', stamina=100, maxStamina=100,
+          angle=180, instanceName='HeadmanAssistant', stamina=100, maxStamina=100,
           roamingVelocity=random.randrange(25,35),
-          intention='SYNCING')#.attach(Dialog(1))
+          intention='SYNCING', conversation=dialog.HeadmanAssistant())
+
+    #
+    # ÌèâÎ≤îÌïú ÎßâÏ¥å Ï£ºÎØº
+    #
+    SPrey(world, location=getRandomActorTile(19,2,20,3), velocity=20,
+          angle=180, instanceName='Villager', stamina=100, maxStamina=100,
+          roamingVelocity=random.randrange(25,35),
+          intention='SYNCING', conversation=dialog.Villager())
 
     #
     # Display

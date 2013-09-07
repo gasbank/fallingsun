@@ -195,7 +195,7 @@ class ActorProperties:
                  width=-1, hitpoints=1, public=True, harvestable=False,
                  physical=True, animatedSprite=False, instanceName='',
                  tickEvent=True, staticSprite=False, sightRange=0,
-                 blankType=None, waitGauge=None, vocas=None, dialog=None):
+                 blankType=None, waitGauge=None, vocas=None, conversation=None):
         
         self.name = name
         self.location = location
@@ -218,5 +218,5 @@ class ActorProperties:
         self.sightRange = sightRange
         self.blankType = blankType
         self.vocas = vocas or set()
-        self.dialog = dialog
+        self.conversation = conversation
         

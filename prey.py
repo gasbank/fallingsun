@@ -27,7 +27,7 @@ class SPrey(SActor):
     def __init__(self, world, location=(0,0), angle=0, velocity=0,
                  hitpoints=10, homeLocation=None, instanceName="",
                  stamina=100, maxStamina=100, attackPower=1,
-                 intention='RESTING', roamingVelocity=30):
+                 intention='RESTING', roamingVelocity=30, conversation=None):
         
         SActor.__init__(self, instanceName)
         self._angle = self._angleDirty = None
@@ -48,7 +48,7 @@ class SPrey(SActor):
         self.roamingPath = None
         self.restFor = 5
         self.clearVocaTarget()
-        self.dialog = dialog.Dialog()
+        self.conversation = conversation
         
         self.world.send((self.channel, "JOIN",
                          ActorProperties(self.__class__.__name__,
@@ -60,7 +60,7 @@ class SPrey(SActor):
                                          hitpoints=self.hitpoints,
                                          animatedSprite=True,
                                          instanceName=self.instanceName,
-                                         dialog=self.dialog)))
+                                         conversation=self.conversation)))
 
         self.changeIntention(intention)
         
@@ -153,17 +153,26 @@ class SPrey(SActor):
         self.stamina -= self.deltaTime
     
     
-    def handleMyVoca(self, sentFrom, vocas, dialog):
+    def handleAvailableVocas(self, sentFrom, vocas, conversation):
+        
+        if self._dialogContext is None:
+            self._dialogContext = dialog.Context(conversation, self.channel, sentFrom)
+
+        if self._display:
+            self._display.send((self.channel, 'SET_DIALOG_CONTEXT',
+                                self._dialogContext))
+        '''
         self._vocaTarget = weakref.ref(sentFrom)
         self._vocas = list(vocas)
         
         if self._display:
             self._display.send((self.channel, 'SET_VOCAS', str(sentFrom.name),
-                                sentFrom, vocas, dialog))
+                                sentFrom, vocas, dialog))'''
 
     def clearVocaTarget(self):
         self._vocaTarget = None
         self._vocas = None
+        self._dialogContext = None
         
         if self._display:
             self._display.send((self.channel, 'CLEAR_VOCAS'))
@@ -212,6 +221,6 @@ class SPrey(SActor):
         elif msg == 'QUERY_RESULT':
             pass
         elif msg == 'AVAILABLE_VOCAS':
-            self.handleMyVoca(sentFrom, *msgArgs)
+            self.handleAvailableVocas(sentFrom, *msgArgs)
         else:
             raise UnknownMessageError(msg, sentFrom)

@@ -430,7 +430,7 @@ class SWorld(SActor):
                          actors if a() and a() is not sentFrom and
                          self.registeredActors.has_key(a())):
 
-                sentFrom.send((a, 'AVAILABLE_VOCAS', p.vocas, p.dialog))
+                sentFrom.send((a, 'AVAILABLE_VOCAS', p.vocas, p.conversation))
                 break
         else:
             raise UnknownMessageError(msg, sentFrom)

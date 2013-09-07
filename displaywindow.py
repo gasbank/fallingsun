@@ -153,6 +153,8 @@ class SDisplayWindow(SActor):
             self._comPanelManager.setVocas(*msgArgs)
         elif msg == 'CLEAR_VOCAS':
             self._comPanelManager.clear()
+        elif msg == 'SET_DIALOG_CONTEXT':
+            self._comPanelManager.setDialogContext(*msgArgs)
         else:
             raise RuntimeError('Unknown message: %s' % msg)
 
@@ -568,10 +570,14 @@ class SDisplayWindow(SActor):
     def drawGridDebug(self, screen):
         
         for tx in range(self.camOriginTile[0], self.camLastTile[0]):
-            pygame.draw.line(screen, (128,128,128), self.getTileBlitLoc((tx, self.camOriginTile[1])), self.getTileBlitLoc((tx, self.camLastTile[1])))
+            pygame.draw.line(screen, (128,128,128),
+                             self.getTileBlitLoc((tx, self.camOriginTile[1])),
+                             self.getTileBlitLoc((tx, self.camLastTile[1])))
             
         for ty in range(self.camOriginTile[1], self.camLastTile[1]):
-            pygame.draw.line(screen, (128,128,128), self.getTileBlitLoc((self.camOriginTile[0], ty)), self.getTileBlitLoc((self.camLastTile[0], ty)))
+            pygame.draw.line(screen, (128,128,128),
+                             self.getTileBlitLoc((self.camOriginTile[0], ty)),
+                             self.getTileBlitLoc((self.camLastTile[0], ty)))
             
         for ty in range(self.camOriginTile[1], self.camLastTile[1]):
             for tx in range(self.camOriginTile[0], self.camLastTile[0]):
