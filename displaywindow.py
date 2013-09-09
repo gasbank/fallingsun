@@ -6,6 +6,7 @@ from sight import SSight
 import stackless
 from companel import ComPanelManager
 import level
+import alert
 
 TS = 32  # Tile Size
 STS = 16  # Sub-Tile Size
@@ -121,6 +122,7 @@ class SDisplayWindow(SActor):
 
         self._fadeoutTextManager = FadeoutTextManager(self)
         self._comPanelManager = ComPanelManager()
+        self._alertManager = alert.DAlertManager(self)
         
         self.world.send((self.channel, "JOIN",
                          ActorProperties(self.__class__.__name__,
@@ -135,8 +137,11 @@ class SDisplayWindow(SActor):
         
         self.debug('Created.')
         
+    def handleAlertMessage(self, sentFrom, msg):
+        self._alertManager.addText(msg)
+        
     def defaultMessageAction(self, args):
-        _, msg, msgArgs = args[0], args[1], args[2:]
+        sentFrom, msg, msgArgs = args[0], args[1], args[2:]
         if msg == 'WORLD_STATE':
             self.updateDisplay(msgArgs)
             pass
@@ -156,6 +161,8 @@ class SDisplayWindow(SActor):
             self._comPanelManager.clear()
         elif msg == 'SET_DIALOG_CONTEXT':
             self._comPanelManager.setDialogContext(*msgArgs)
+        elif msg == 'ALERT_MESSAGE':
+            self.handleAlertMessage(sentFrom, *msgArgs)
         else:
             raise RuntimeError('Unknown message: %s' % msg)
 
@@ -675,6 +682,7 @@ class SDisplayWindow(SActor):
         
         self._fadeoutTextManager.update(self.deltaTime)
         self._comPanelManager.update(ws.actorsDict, self.deltaTime)
+        self._alertManager.update(self.deltaTime)
         
         screen.blit(self.mainSurface, (TS,TS))
         
@@ -682,7 +690,8 @@ class SDisplayWindow(SActor):
                                  1, (0, 0, 0))
         screen.blit(label, (0, 0))
         
-        screen.blit(self._comPanelManager.panel, (TS, (2+self.sheight//TS)*TS)) 
+        screen.blit(self._comPanelManager.panel, (TS, (2+self.sheight//TS)*TS))
+        screen.blit(self._alertManager.panel, (50, 50))
         
         pygame.display.flip()
         

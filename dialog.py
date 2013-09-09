@@ -2,6 +2,7 @@
 import weakref
 import stackless
 import treasurebox
+import quest
 
 class Context(object):
     @property
@@ -53,6 +54,7 @@ class Context(object):
         try:
             choices = self._conversation.greetings[self._conIndex]
             self._changeConversation(choices[c].conversation)
+            choices[c].onChosen()
         except IndexError:
             return False
         
@@ -89,7 +91,6 @@ class StartTutorialChoice(Choice):
     
     @property
     def greetings(self):
-        treasurebox.STreasureBox(self._context().world, (32*22+16,32*5+16), 'TB')
         return (u'좋습니다. {보물상자}를 집어서 저에게 가져와 보십시오.',)
 
     @property
@@ -99,6 +100,11 @@ class StartTutorialChoice(Choice):
     @property
     def faceTile(self):
         return (0, 1)
+    
+    def onChosen(self):
+        tb = treasurebox.STreasureBox(self._context().world, (32*22+16,32*5+16),
+                                      'TB')
+        quest.AcquireItemTask(self._context().starter(), tb)
     
 class RefuseChoice(Choice):
     
@@ -121,11 +127,12 @@ class RefuseChoice(Choice):
 class HeadmanAssistant(Conversation):
     @property
     def greetings(self):
+        choices = (StartTutorialChoice(u'네.'), RefuseChoice(u'아뇨.'))
         return (u'어서오세요. 이번에 새로 막촌의 장으로 부임하신 분이시군요.',
+                choices,
                 u'만나서 반갑습니다. 저는 막촌의 신임 촌장의 보좌를 담당하는 {스미스}라고 합니다.',
                 u'본격적인 촌장직의 업무 안내에 앞서 우선 기본적인 업무를 수행하실 수 있는지 확인해야 합니다.',
-                u'뭐, 통상적인 절차니까요. 지금 잠깐 시간 괜찮으신지요?',
-                (StartTutorialChoice(u'네.'), RefuseChoice(u'아뇨.')))
+                u'뭐, 통상적인 절차니까요. 지금 잠깐 시간 괜찮으신지요?',)
     
     @property
     def speaker(self):

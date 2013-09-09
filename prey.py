@@ -184,8 +184,13 @@ class SPrey(SActor):
             
                 if self._display:
                     self._display.send((self.channel, 'SET_DIALOG_CONTEXT',
-                                        self._dialogContext))            
+                                        self._dialogContext))
             #self._vocaTarget().send((self.channel, 'REQUEST_VOCA', v))
+            
+    def handleNewTask(self, sentFrom, task):
+        if self._display:
+            self._display.send((self.channel, 'ALERT_MESSAGE', 
+                                'NEW_TASK_RECEIVED'))
     
     def defaultMessageAction(self, args):
         sentFrom, msg, msgArgs = args[0], args[1], args[2:]
@@ -226,5 +231,7 @@ class SPrey(SActor):
             pass
         elif msg == 'AVAILABLE_VOCAS':
             self.handleAvailableVocas(sentFrom, *msgArgs)
+        elif msg == 'NEW_TASK':
+            self.handleNewTask(sentFrom, *msgArgs)
         else:
             raise UnknownMessageError(msg, sentFrom)
