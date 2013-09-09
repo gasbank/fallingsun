@@ -1,12 +1,12 @@
 import pygame
 import collections
 
-LINE_HEIGHT = 26
+LINE_HEIGHT = 20
 MAX_LINE = 4
 #OFFSET_Y = 100
 TEXT_COLOR = (0,50,240)
 PANEL_WIDTH = 32*10
-PANEL_HEIGHT = LINE_HEIGHT*MAX_LINE
+PANEL_HEIGHT = LINE_HEIGHT*(MAX_LINE-1)
 MAX_AGE = 10
 SCROLL_SPEED = 3
 
@@ -27,13 +27,13 @@ class DAlertManager(object):
         m = LineInstance()
         m.label = self._font.render(msg, 1, TEXT_COLOR)
         m.age = 0
-        m.yt = PANEL_HEIGHT-32
+        m.yt = PANEL_HEIGHT-LINE_HEIGHT
         m.y = PANEL_HEIGHT
         
         self._msgs.append(m)
         
         for m in self._msgs[:-1]:
-            m.yt -= 32
+            m.yt -= LINE_HEIGHT
         
     def update(self, deltaTime):
         self._panel.fill((0,0,0))
