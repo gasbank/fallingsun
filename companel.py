@@ -43,13 +43,11 @@ class ComPanelManager(object):
         
         # Dialog context
         self._dialogContext = None
-        self._dialogIndex = 0
         '''
         self._vocaTarget = None
         self._vocas = None        
         self._conversation = None
         '''
-        
         
     def setDialogContext(self, context):
         
@@ -69,7 +67,7 @@ class ComPanelManager(object):
         
         self._dialogContext = context
         
-        con = self._dialogContext.conversation
+        self._dialogContext.proceed()
         
         #self._vocaTarget = weakref.ref(target) if target else None
         #self._vocas = vocas
@@ -77,8 +75,8 @@ class ComPanelManager(object):
         #self._targetName = conversation.speaker
         
         text = ''
-        text += con.speaker + '\n'
-        text += con.greetings[self._dialogIndex] + '\n'
+        text += self._dialogContext.speaker + '\n'
+        text += self._dialogContext.line + '\n'
         
         '''
         for i, v in enumerate(vocas):
@@ -89,7 +87,7 @@ class ComPanelManager(object):
         
         # Blit the speaker's face.
         self._panel.blit(self._faceTile, (0,0),
-                         self.getFaceTileRect(con.faceTile))
+                         self.getFaceTileRect(self._dialogContext.faceTile))
         
     def getFaceTileRect(self, faceTile):
         return (32*3*faceTile[0], 32*3*faceTile[1], 32*3, 32*3)
@@ -103,24 +101,23 @@ class ComPanelManager(object):
         self._lastBlitPos = [DIALOG_BLIT_X0,DIALOG_BLIT_Y0]
         
     def nextDialog(self):
-        self._dialogIndex += 1
-        con = self._dialogContext.conversation
-        if self._dialogIndex < len(con.greetings):
-            d = con.greetings[self._dialogIndex]
-
-            if isinstance(d, tuple):
-                assert all([isinstance(t, dialog.Choice) for t in d])
+        
+        if self._dialogContext.proceed():
+            
+            if self._dialogContext.isChoice:
+                
+                choices = self._dialogContext.line
                 
                 # Print choices
                 self._text += ' '.join(['%d. %s' % (i+1, c.text)
-                                        for i, c in enumerate(d)])
+                                        for i, c in enumerate(choices)])
             else:
                 # Print next dialogue
                 self.clearDialog()
                       
                 text = ''
-                text += con.speaker + '\n'
-                text += d + '\n'
+                text += self._dialogContext.speaker + '\n'
+                text += self._dialogContext.line + '\n'
                     
                 self._text = list(text)
     

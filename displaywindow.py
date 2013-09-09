@@ -5,6 +5,7 @@ import os
 from sight import SSight
 import stackless
 from companel import ComPanelManager
+import level
 
 TS = 32  # Tile Size
 STS = 16  # Sub-Tile Size
@@ -367,7 +368,10 @@ class SDisplayWindow(SActor):
                 
                 _, b, _ = ws.tileData.getCellData(tx, ty)
                 
-                if b == 2:
+                if b == 0:
+                    # No building
+                    continue
+                if b == level.TileLevel.TENT:
                     # Tent sprite
                     spriteX = 0
                     spriteY = 13
@@ -378,7 +382,7 @@ class SDisplayWindow(SActor):
                     sampleOffsetX = 0
                     sampleOffsetY = 0
                     
-                elif b == 3:
+                elif b == level.TileLevel.TREE:
                     # Tree sprite
                     spriteX = 0
                     spriteY = 5
@@ -388,8 +392,17 @@ class SDisplayWindow(SActor):
                     drawOffsetY = 0
                     sampleOffsetX = 0
                     sampleOffsetY = 0
+                elif b == level.TileLevel.TREASUREBOX:
+                    spriteX = 7
+                    spriteY = 0
+                    spriteWidth = 1
+                    spriteHeight = 1
+                    drawOffsetX = 0
+                    drawOffsetY = 0
+                    sampleOffsetX = 0
+                    sampleOffsetY = 0                    
                 else:
-                    continue
+                    raise RuntimeError('Unknown building tile:', b)
                     
                 for ii in range(spriteHeight):
                     for jj in range(spriteWidth):

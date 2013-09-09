@@ -156,7 +156,8 @@ class SPrey(SActor):
     def handleAvailableVocas(self, sentFrom, vocas, conversation):
         
         if self._dialogContext is None:
-            self._dialogContext = dialog.Context(conversation, self.channel, sentFrom)
+            self._dialogContext = dialog.Context(conversation, self.channel,
+                                                 sentFrom, self.world)
 
         if self._display:
             self._display.send((self.channel, 'SET_DIALOG_CONTEXT',
@@ -178,10 +179,13 @@ class SPrey(SActor):
             self._display.send((self.channel, 'CLEAR_VOCAS'))
 
     def handleVocaChosen(self, chosen):
-        if self._vocaTarget and self._vocaTarget():
-            if self._vocas:
-                v = self._vocas[chosen]
-                self._vocaTarget().send((self.channel, 'REQUEST_VOCA', v))
+        if self._dialogContext and self._dialogContext.isChoice:
+            if self._dialogContext.choose(chosen):
+            
+                if self._display:
+                    self._display.send((self.channel, 'SET_DIALOG_CONTEXT',
+                                        self._dialogContext))            
+            #self._vocaTarget().send((self.channel, 'REQUEST_VOCA', v))
     
     def defaultMessageAction(self, args):
         sentFrom, msg, msgArgs = args[0], args[1], args[2:]

@@ -78,16 +78,11 @@ class SWorld(SActor):
             if prop.staticSprite:
                 
                 if prop.name == 'STree':
-                    
-                    self.tileData.placeTree(int(prop.location[0]//32),
-                                            int(prop.location[1]//32),
-                                            False)
-                    
+                    self.tileData.placeTree(*prop.tileLoc, place=False)
                 elif prop.name == 'SHome':
-                    
-                    self.tileData.placeTent(int(prop.location[0]//32),
-                                            int(prop.location[1]//32),
-                                            False)
+                    self.tileData.placeTent(*prop.tileLoc, place=False)
+                elif prop.name == 'STreasureBox':
+                    self.tileData.placeTreasureBox(*prop.tileLoc, place=False)
             
             self.info('%s about to be destroyed.' % prop.instanceName)
             del self.registeredActors[actor]
@@ -152,7 +147,9 @@ class SWorld(SActor):
                 ws.actors.append((actor, prop))
                 ws.actorsDict[actor] = prop
         
-        for actor, prop in self.registeredActors.iteritems():
+        # Actors can be added during iteration...
+        #for actor, prop in self.registeredActors.iteritems():
+        for actor, prop in self.registeredActors.items():
             self.debug('%s --WORLD_STATE--> %s' % (self.channel, actor))
             actor.send((self.channel, "WORLD_STATE", ws, prop))
         
@@ -310,12 +307,11 @@ class SWorld(SActor):
         if prop.staticSprite:
             
             if prop.name == 'STree':
-                
                 self.tileData.placeTree(*prop.tileLoc)
-                
             elif prop.name == 'SHome':
-                
                 self.tileData.placeTent(*prop.tileLoc)
+            elif prop.name == 'STreasureBox':
+                self.tileData.placeTreasureBox(*prop.tileLoc)
         
         '''
         if msgArgs[0].name == 'SSight':

@@ -7,6 +7,7 @@ class TileLevel(object):
     
     TENT = 2
     TREE = 3
+    TREASUREBOX = 4
     
     def __init__(self, width = 0, height = 0, useTestData=False):
         
@@ -76,7 +77,14 @@ class TileLevel(object):
         
         self.placeBuilding(tx, ty, TileLevel.TENT if place else 0, 
                            originOffset, collisionRect)
+    
+    def placeTreasureBox(self, tx, ty, place=True):
+                
+        originOffset = (0, 0)
+        collisionRect = (0, 0, 1, 1)
         
+        self.placeBuilding(tx, ty, TileLevel.TREASUREBOX if place else 0, 
+                           originOffset, collisionRect)        
     
     def fillWithTestData(self):
         
