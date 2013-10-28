@@ -27,7 +27,7 @@ class ComPanelManager(object):
         self._panel = pygame.Surface((COM_PANEL_WIDTH, COM_PANEL_HEIGHT))
         self.font = pygame.font.Font('C:\windows\Fonts\malgunbd.ttf', 22)
         
-        self._faceTile = pygame.image.load(os.path.join('data', 'Evil.png'))
+        self._faceTile = pygame.image.load(os.path.join('../data', 'Evil.png'))
         
         self.clear()
         

@@ -1,0 +1,73 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <SchemaVersion>2.0</SchemaVersion>
+    <ProjectGuid>c496515b-2705-4ee6-9cec-83c6f7f61f5f</ProjectGuid>
+    <ProjectHome>.</ProjectHome>
+    <StartupFile>mainanimsprite.py</StartupFile>
+    <SearchPath>
+    </SearchPath>
+    <WorkingDirectory>.</WorkingDirectory>
+    <OutputPath>.</OutputPath>
+    <Name>fallingsun</Name>
+    <RootNamespace>fallingsun</RootNamespace>
+    <IsWindowsApplication>False</IsWindowsApplication>
+    <InterpreterId>{2af0f10d-7135-4994-9156-5d01c9c11b7e}</InterpreterId>
+    <InterpreterVersion>2.7</InterpreterVersion>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
+    <DebugSymbols>true</DebugSymbols>
+    <EnableUnmanagedDebugging>false</EnableUnmanagedDebugging>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)' == 'Release' ">
+    <DebugSymbols>true</DebugSymbols>
+    <EnableUnmanagedDebugging>false</EnableUnmanagedDebugging>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="actor.py" />
+    <Compile Include="alert.py" />
+    <Compile Include="architect.py" />
+    <Compile Include="balance.py" />
+    <Compile Include="bandit.py" />
+    <Compile Include="blank.py" />
+    <Compile Include="client.py" />
+    <Compile Include="companel.py" />
+    <Compile Include="connection.py" />
+    <Compile Include="dialog.py" />
+    <Compile Include="displaywindow.py" />
+    <Compile Include="fallingsun.py" />
+    <Compile Include="home.py" />
+    <Compile Include="kdtree.py" />
+    <Compile Include="level.py" />
+    <Compile Include="main.py" />
+    <Compile Include="main2.py" />
+    <Compile Include="mainanimsprite.py" />
+    <Compile Include="mainbandittest.py" />
+    <Compile Include="mainclient.py" />
+    <Compile Include="mainserver.py" />
+    <Compile Include="maintile.py" />
+    <Compile Include="mud.py" />
+    <Compile Include="netactor.py" />
+    <Compile Include="prey.py" />
+    <Compile Include="quest.py" />
+    <Compile Include="server.py" />
+    <Compile Include="sight.py" />
+    <Compile Include="stacklesssocket.py" />
+    <Compile Include="test.py" />
+    <Compile Include="testclient.py" />
+    <Compile Include="tornadoserver.py" />
+    <Compile Include="treasurebox.py" />
+    <Compile Include="tree.py" />
+    <Compile Include="twistedserver.py" />
+    <Compile Include="user.py" />
+    <Compile Include="webconnection.py" />
+    <Compile Include="websocketserver.py" />
+    <Compile Include="woodcutter.py" />
+    <Compile Include="world.py" />
+  </ItemGroup>
+  <ItemGroup>
+    <InterpreterReference Include="{2af0f10d-7135-4994-9156-5d01c9c11b7e}\2.7" />
+  </ItemGroup>
+  <Import Project="$(MSBuildToolsPath)\Microsoft.Common.targets" />
+</Project>

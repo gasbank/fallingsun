@@ -112,13 +112,13 @@ class SDisplayWindow(SActor):
         
         self.font = pygame.font.Font('C:\windows\Fonts\GULIM.TTC', 10)
         self.bigFont = pygame.font.Font('C:\windows\Fonts\ARIALNBI.ttf', 12)
-        self.dustRoadTile = pygame.image.load(os.path.join('data', '004-G_Ground02.png'))
-        self.waterTile = pygame.image.load(os.path.join('data', '001-G_Water01.png'))
-        self.grasslandTile = pygame.image.load(os.path.join('data', '001-Grassland01.png'))
-        self.fighterTile = pygame.image.load(os.path.join('data', '001-Fighter01.png'))
-        self.thiefTile = pygame.image.load(os.path.join('data', '018-Thief03.png'))
-        self.farmerTile = pygame.image.load(os.path.join('data', '143-Farmer01.png'))
-        self.headmanTile = pygame.image.load(os.path.join('data', '109-Civilian09.png'))
+        self.dustRoadTile = pygame.image.load(os.path.join('../data', '004-G_Ground02.png'))
+        self.waterTile = pygame.image.load(os.path.join('../data', '001-G_Water01.png'))
+        self.grasslandTile = pygame.image.load(os.path.join('../data', '001-Grassland01.png'))
+        self.fighterTile = pygame.image.load(os.path.join('../data', '001-Fighter01.png'))
+        self.thiefTile = pygame.image.load(os.path.join('../data', '018-Thief03.png'))
+        self.farmerTile = pygame.image.load(os.path.join('../data', '143-Farmer01.png'))
+        self.headmanTile = pygame.image.load(os.path.join('../data', '109-Civilian09.png'))
 
         self._fadeoutTextManager = FadeoutTextManager(self)
         self._comPanelManager = ComPanelManager()
@@ -149,7 +149,7 @@ class SDisplayWindow(SActor):
             self._fadeoutTextManager.addText(self.mainSurface,self.bigFont,
                                              msgArgs[0], msgArgs[1])
         elif msg == 'WORLD_SIZE':
-            icon = pygame.image.load(os.path.join('data', 'fighter.ico')).convert_alpha()
+            icon = pygame.image.load(os.path.join('../data', 'fighter.ico')).convert_alpha()
             pygame.display.set_icon(icon)
         
         elif msg == 'SIGHTED_ACTORS':
